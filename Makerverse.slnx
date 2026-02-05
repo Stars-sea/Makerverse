@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Makerverse.AppHost/Makerverse.AppHost.csproj" />
+  <Project Path="Makerverse.ServiceDefaults/Makerverse.ServiceDefaults.csproj" />
+</Solution>
