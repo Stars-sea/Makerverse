@@ -1,17 +1,20 @@
 ﻿using System.Security.Claims;
+using Contracts;
 using LiveService.Data;
 using LiveService.DTOs;
 using LiveService.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Wolverine;
 
 namespace LiveService.Controllers;
 
 [ApiController]
 [Route("[controller]")]
 public class LivesController(
-    LiveDbContext db
+    LiveDbContext db,
+    IMessageBus bus
 ) : ControllerBase {
 
     [Authorize]
@@ -33,6 +36,14 @@ public class LivesController(
         };
         db.Lives.Add(live);
         await db.SaveChangesAsync();
+
+        await bus.PublishAsync(new LiveCreated(
+            live.Id,
+            live.Title,
+            live.TagSlugs,
+            live.CreatedAt,
+            live.StartTime
+        ));
 
         return CreatedAtAction(
             "GetLive",
@@ -92,7 +103,7 @@ public class LivesController(
     public async Task<ActionResult> DeleteLive(string id) {
         Live? live = await db.Lives.FindAsync(id);
         if (live is null) return NotFound();
-        
+
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
 
