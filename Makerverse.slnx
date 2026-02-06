@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Services/">
+    <Project Path="LiveService/LiveService.csproj" />
+  </Folder>
   <Project Path="Makerverse.AppHost/Makerverse.AppHost.csproj" />
   <Project Path="Makerverse.ServiceDefaults/Makerverse.ServiceDefaults.csproj" />
 </Solution>
