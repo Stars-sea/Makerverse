@@ -20,30 +20,17 @@ public class LivesController(
     [Authorize]
     [HttpPost]
     public async Task<ActionResult<Live>> CreateLive(CreateLiveDto dto) {
-        var validTags = await db.Tags.Where(x => dto.Tags.Contains(x.Slug)).ToListAsync();
-        var missing   = dto.Tags.Except(validTags.Select(x => x.Slug)).ToList();
-        if (missing.Count != 0) {
-            return BadRequest($"Invalid tags: {string.Join(", ", missing)}");
-        }
-
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return BadRequest("Cannot get user details.");
 
         Live live = new() {
             Title      = dto.Title,
             StreamerId = userId,
-            TagSlugs   = dto.Tags
         };
         db.Lives.Add(live);
         await db.SaveChangesAsync();
 
-        await bus.PublishAsync(new LiveCreated(
-            live.Id,
-            live.Title,
-            live.TagSlugs,
-            live.CreatedAt,
-            live.StartTime
-        ));
+        await bus.PublishAsync(new LiveCreated(live.Id, live.Title, live.CreatedAt));
 
         return CreatedAtAction(
             "GetLive",
@@ -55,18 +42,9 @@ public class LivesController(
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Live>>> GetLives(string? title, string? tag) {
-        var query = db.Lives.AsQueryable();
-
-        if (!string.IsNullOrEmpty(title)) {
-            query = query.Where(x => x.Title.Contains(title));
-        }
-
-        if (!string.IsNullOrEmpty(tag)) {
-            query = query.Where(x => x.TagSlugs.Contains(tag));
-        }
-
-        return await query.OrderByDescending(x => x.CreatedAt).ToListAsync();
+    public async Task<ActionResult<List<Live>>> GetLives() {
+        return await db.Lives.AsQueryable()
+            .OrderByDescending(x => x.CreatedAt).ToListAsync();
     }
 
     [HttpGet("{id}")]
@@ -85,16 +63,12 @@ public class LivesController(
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
 
-        var validTags = await db.Tags.Where(x => dto.Tags.Contains(x.Slug)).ToListAsync();
-        var missing   = dto.Tags.Except(validTags.Select(x => x.Slug)).ToList();
-        if (missing.Count != 0) {
-            return BadRequest($"Invalid tags: {string.Join(", ", missing)}");
-        }
-
-        live.TagSlugs = dto.Tags;
-        live.Title    = dto.Title;
+        live.Title = dto.Title;
 
         await db.SaveChangesAsync();
+
+        await bus.PublishAsync(new LiveUpdated(live.Id, live.Title, live.CreatedAt));
+
         return NoContent();
     }
 
@@ -109,6 +83,9 @@ public class LivesController(
 
         db.Lives.Remove(live);
         await db.SaveChangesAsync();
+
+        await bus.PublishAsync(new LiveDeleted(live.Id));
+
         return NoContent();
     }
 }

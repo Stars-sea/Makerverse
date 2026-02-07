@@ -19,9 +19,7 @@ public static class SearchInitializer {
         [
             new Field("id", FieldType.String),
             new Field("title", FieldType.String),
-            new Field("tags", FieldType.StringArray),
-            new Field("createdAt", FieldType.Int64),
-            new Field("startedAt", FieldType.Int64, facet: null, optional: true)
+            new Field("createdAt", FieldType.Int64)
         ]) {
             DefaultSortingField = "createdAt"
         };

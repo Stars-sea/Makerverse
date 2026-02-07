@@ -14,9 +14,7 @@ public class Live {
 
     public LiveStatus Status { get; set; } = LiveStatus.Created;
 
-    public List<string> TagSlugs { get; set; } = [];
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? StoppedAt { get; set; }
 }

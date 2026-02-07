@@ -10,15 +10,17 @@ var keycloak = builder.AddKeycloak("keycloak", 6001)
 #pragma warning restore ASPIRECERTIFICATES001
 
 var postgres = builder.AddPostgres("postgres", port: 5432)
-    .WithDataVolume("postgres-data")
-    .WithPgAdmin();
+    .WithDataVolume("postgres-data");
 
 var typesenseApiKey = builder.AddParameter("typesense-api-key", secret: true);
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
-    .WithArgs("--data-dir", "/data", "--api-key", typesenseApiKey, "--enable-cors")
+    .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
+    .WithEnvironment("TYPESENSE_DATA_DIR", "/data")
+    .WithEnvironment("TYPESENSE_ENABLE_CORS", "true")
     .WithVolume("typesense-data", "/data")
-    .WithHttpEndpoint(8108, 8108, name: "typesense");
+    .WithHttpEndpoint(port: 8108, targetPort: 8108, name: "typesense")
+    .WithHttpHealthCheck("/health", 200, "typesense");
 
 var typesenseContainer = typesense.GetEndpoint("typesense");
 

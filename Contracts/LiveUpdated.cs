@@ -1,6 +1,6 @@
 ﻿namespace Contracts;
 
-public record LiveCreated(
+public record LiveUpdated(
     string LiveId,
     string Title,
     DateTime Created

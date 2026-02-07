@@ -9,12 +9,6 @@ public class SearchLive {
     [JsonPropertyName("title")]
     public required string Title { get; set; }
 
-    [JsonPropertyName("tags")]
-    public string[] Tags { get; set; } = [];
-
     [JsonPropertyName("createdAt")]
     public long CreatedAt { get; set; }
-
-    [JsonPropertyName("startedAt")]
-    public long? StartedAt { get; set; }
 }
