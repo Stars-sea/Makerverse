@@ -46,7 +46,7 @@ app.MapDefaultEndpoints();
 
 using (IServiceScope scope = app.Services.CreateScope()) {
     try {
-        var context = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+        LiveDbContext context = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
         await context.Database.MigrateAsync();
     }
     catch (Exception ex) {

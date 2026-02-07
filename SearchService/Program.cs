@@ -1,8 +1,6 @@
-using System.Text.RegularExpressions;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SearchService.Data;
-using SearchService.Models;
 using Typesense;
 using Typesense.Setup;
 using Wolverine;
@@ -11,6 +9,7 @@ using Wolverine.RabbitMQ;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
 
@@ -25,6 +24,10 @@ builder.Host.UseWolverine(options => {
     options.ListenToRabbitQueue(
         "lives.search",
         cfg => cfg.BindExchange("lives")
+    );
+    options.ListenToRabbitQueue(
+        "activities.search",
+        cfg => cfg.BindExchange("activities")
     );
 });
 

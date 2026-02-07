@@ -43,8 +43,10 @@ var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
     .WithReference(keycloak)
     .WithReference(activityDb)
+    .WithReference(rabbitmq)
     .WaitFor(keycloak)
-    .WaitFor(activityDb);
+    .WaitFor(activityDb)
+    .WaitFor(rabbitmq);
 
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
