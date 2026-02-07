@@ -3,5 +3,5 @@
 public record LiveCreated(
     string LiveId,
     string Title,
-    DateTime Created
+    DateTime CreatedAt
 );

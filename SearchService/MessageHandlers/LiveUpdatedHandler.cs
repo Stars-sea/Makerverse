@@ -1,4 +1,5 @@
 ﻿using Contracts;
+using SearchService.Data;
 using Typesense;
 
 namespace SearchService.MessageHandlers;
@@ -7,14 +8,11 @@ public class LiveUpdatedHandler(
     ITypesenseClient client
 ) {
     public async Task HandleAsync(LiveUpdated message) {
-        long created = new DateTimeOffset(message.Created).ToUnixTimeSeconds();
-
         await client.UpdateDocument(
-            "lives",
+            SearchInitializer.LiveCollectionName,
             message.LiveId,
             new {
-                message.Title,
-                CreatedAt = created,
+                message.Title
             }
         );
     }

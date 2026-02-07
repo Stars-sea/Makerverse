@@ -3,9 +3,11 @@ using ActivityService.Data;
 using ActivityService.DTOs;
 using ActivityService.Models;
 using ActivityService.Services;
+using Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Wolverine;
 
 namespace ActivityService.Controllers;
 
@@ -13,7 +15,8 @@ namespace ActivityService.Controllers;
 [Route("[controller]")]
 public class ActivitiesController(
     TagService tagService,
-    ActivityDbContext db
+    ActivityDbContext db,
+    IMessageBus bus
 ) : ControllerBase {
 
     #region Activity Region
@@ -36,6 +39,14 @@ public class ActivitiesController(
         };
         db.Activities.Add(activity);
         await db.SaveChangesAsync();
+
+        await bus.PublishAsync(new ActivityCreated(
+            activity.Id,
+            activity.Title,
+            activity.Content,
+            activity.TagSlugs.ToArray(),
+            activity.CreatedAt)
+        );
 
         return CreatedAtAction(
             nameof(GetActivity),
@@ -79,6 +90,13 @@ public class ActivitiesController(
 
         await db.SaveChangesAsync();
 
+        await bus.PublishAsync(new ActivityUpdated(
+            activity.Id,
+            activity.Title,
+            activity.Content,
+            activity.TagSlugs.ToArray())
+        );
+
         return NoContent();
     }
 
@@ -93,6 +111,8 @@ public class ActivitiesController(
 
         db.Activities.Remove(activity);
         await db.SaveChangesAsync();
+
+        await bus.PublishAsync(new ActivityDeleted(activity.Id));
 
         return NoContent();
     }

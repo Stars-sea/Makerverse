@@ -1,4 +1,5 @@
 ﻿using Contracts;
+using SearchService.Data;
 using SearchService.Models;
 using Typesense;
 
@@ -8,13 +9,13 @@ public class LiveCreatedHandler(
     ITypesenseClient client
 ) {
     public async Task HandleAsync(LiveCreated message) {
-        long created = new DateTimeOffset(message.Created).ToUnixTimeSeconds();
+        long createdAt = new DateTimeOffset(message.CreatedAt).ToUnixTimeSeconds();
 
         SearchLive doc = new() {
             Id        = message.LiveId,
             Title     = message.Title,
-            CreatedAt = created,
+            CreatedAt = createdAt,
         };
-        await client.CreateDocument("lives", doc);
+        await client.CreateDocument(SearchInitializer.LiveCollectionName, doc);
     }
 }

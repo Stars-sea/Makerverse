@@ -51,35 +51,13 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment()) {
     app.MapOpenApi();
 }
+
+app.MapControllers();
 app.MapDefaultEndpoints();
-
-app.MapGet("/search",
-    async (string query, ITypesenseClient client) => {
-        string? tag      = null;
-        var     tagMatch = Regex.Match(query, @"\[(.*?)\]");
-        if (tagMatch.Success) {
-            tag   = tagMatch.Groups[1].Value;
-            query = query.Replace(tagMatch.Value, "").Trim();
-        }
-
-        SearchParameters searchParameters = new(query, "title");
-        if (!string.IsNullOrEmpty(tag)) {
-            searchParameters.FilterBy = $"tags:=[{tag}]";
-        }
-
-        try {
-            var results = await client.Search<SearchLive>("lives", searchParameters);
-            return Results.Ok(results.Hits.Select(hit => hit.Document));
-        }
-        catch (Exception e) {
-            return Results.Problem("Typesense search failed: " + e.Message);
-        }
-    }
-);
 
 using (IServiceScope scope = app.Services.CreateScope()) {
     var client = scope.ServiceProvider.GetRequiredService<ITypesenseClient>();
-    await SearchInitializer.EnsureIndexExistsAsync(client);
+    await SearchInitializer.EnsureIndexesExistsAsync(client);
 }
 
 app.Run();

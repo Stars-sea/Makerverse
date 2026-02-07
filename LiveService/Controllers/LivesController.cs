@@ -67,7 +67,7 @@ public class LivesController(
 
         await db.SaveChangesAsync();
 
-        await bus.PublishAsync(new LiveUpdated(live.Id, live.Title, live.CreatedAt));
+        await bus.PublishAsync(new LiveUpdated(live.Id, live.Title));
 
         return NoContent();
     }

@@ -14,9 +14,11 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="WolverineFx.RabbitMQ" Version="5.14.0" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Contracts\Contracts.csproj" />
       <ProjectReference Include="..\Makerverse.ServiceDefaults\Makerverse.ServiceDefaults.csproj" />
     </ItemGroup>
 
