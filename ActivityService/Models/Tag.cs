@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace LiveService.Models;
+namespace ActivityService.Models;
 
 public class Tag {
     [MaxLength(36)]

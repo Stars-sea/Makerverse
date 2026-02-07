@@ -38,6 +38,14 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WaitFor(liveDb)
     .WaitFor(rabbitmq);
 
+var activityDb = postgres.AddDatabase("activity-db");
+
+var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
+    .WithReference(keycloak)
+    .WithReference(activityDb)
+    .WaitFor(keycloak)
+    .WaitFor(activityDb);
+
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
     .WithReference(typesenseContainer)

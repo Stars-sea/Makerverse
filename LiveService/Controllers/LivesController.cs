@@ -33,7 +33,7 @@ public class LivesController(
         await bus.PublishAsync(new LiveCreated(live.Id, live.Title, live.CreatedAt));
 
         return CreatedAtAction(
-            "GetLive",
+            nameof(GetLive),
             new {
                 id = live.Id
             },

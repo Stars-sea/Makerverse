@@ -3,6 +3,7 @@
     <Project Path="Contracts/Contracts.csproj" />
   </Folder>
   <Folder Name="/Services/">
+    <Project Path="ActivityService/ActivityService.csproj" />
     <Project Path="LiveService/LiveService.csproj" />
     <Project Path="SearchService/SearchService.csproj" />
   </Folder>
