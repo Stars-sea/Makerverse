@@ -12,15 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
-builder.Services.AddAuthentication()
-    .AddKeycloakJwtBearer(
-        serviceName: "keycloak",
-        realm: "makerverse",
-        options => {
-            options.RequireHttpsMetadata = false;
-            options.Audience             = "makerverse";
-        }
-    );
 builder.AddNpgsqlDbContext<LiveDbContext>("live-db");
 
 builder.Services.AddOpenTelemetry().WithTracing(providerBuilder =>

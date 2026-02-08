@@ -17,15 +17,6 @@ builder.AddServiceDefaults();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TagService>();
 
-builder.Services.AddAuthentication()
-    .AddKeycloakJwtBearer(
-        serviceName: "keycloak",
-        realm: "makerverse",
-        options => {
-            options.RequireHttpsMetadata = false;
-            options.Audience             = "makerverse";
-        }
-    );
 builder.AddNpgsqlDbContext<ActivityDbContext>("activity-db");
 
 builder.Services.AddOpenTelemetry().WithTracing(providerBuilder =>

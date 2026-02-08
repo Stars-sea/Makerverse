@@ -6,17 +6,6 @@ var compose = builder.AddDockerComposeEnvironment("production")
 var postgres = builder.AddPostgres("postgres", port: 5432)
     .WithDataVolume("postgres-data");
 
-// var keycloakDb = postgres.AddDatabase("keycloak-db");
-
-var keycloak = builder.AddKeycloak("keycloak", 6001)
-    .WithDataVolume("keycloak-data")
-    .WithEnvironment("KC_HTTP_ENABLED", "true")
-    .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    // .WithPostgres(keycloakDb, xaEnabled: true)
-    .WithHttpEndpoint(port: 6001, targetPort: 8080, "keycloak")
-    .WithExternalHttpEndpoints();
-    // .WaitFor(keycloakDb);
-
 var typesenseApiKey = builder.AddParameter("typesense-api-key", secret: true);
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
@@ -36,20 +25,16 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
 var liveDb = postgres.AddDatabase("live-db");
 
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
-    .WithReference(keycloak)
     .WithReference(liveDb)
     .WithReference(rabbitmq)
-    .WaitFor(keycloak)
     .WaitFor(liveDb)
     .WaitFor(rabbitmq);
 
 var activityDb = postgres.AddDatabase("activity-db");
 
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
-    .WithReference(keycloak)
     .WithReference(activityDb)
     .WithReference(rabbitmq)
-    .WaitFor(keycloak)
     .WaitFor(activityDb)
     .WaitFor(rabbitmq);
 
