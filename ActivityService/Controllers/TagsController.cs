@@ -45,7 +45,13 @@ public class TagsController(
         await db.SaveChangesAsync();
 
         tagService.InvalidateCache();
-        return tag;
+        return CreatedAtAction(
+            nameof(GetTag),
+            new {
+                slug = tag.Slug
+            },
+            tag
+        );
     }
 
     [Authorize(Roles = "admin")]
