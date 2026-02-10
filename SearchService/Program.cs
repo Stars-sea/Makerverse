@@ -14,8 +14,8 @@ builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
 
 builder.Services.AddOpenTelemetry().WithTracing(providerBuilder =>
-    providerBuilder.SetResourceBuilder(ResourceBuilder.CreateDefault()
-            .AddService(builder.Environment.ApplicationName))
+    providerBuilder
+        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.Environment.ApplicationName))
         .AddSource("Wolverine")
 );
 

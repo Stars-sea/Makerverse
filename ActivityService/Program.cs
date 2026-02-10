@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
+builder.AddDefaultAuthentication();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TagService>();

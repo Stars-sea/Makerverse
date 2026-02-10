@@ -17,6 +17,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\ActivityService\ActivityService.csproj" />
+      <ProjectReference Include="..\AccountService\AccountService.csproj" />
       <ProjectReference Include="..\LiveService\LiveService.csproj" />
       <ProjectReference Include="..\SearchService\SearchService.csproj" />
     </ItemGroup>

@@ -1,4 +1,6 @@
-var builder = DistributedApplication.CreateBuilder(args);
+using Makerverse.AppHost;
+
+IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 var compose = builder.AddDockerComposeEnvironment("production")
     .WithDashboard(dashboard => dashboard.WithHostPort(8080));
@@ -22,23 +24,33 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithDataVolume("rabbitmq-data")
     .WithManagementPlugin(port: 15672);
 
-var liveDb = postgres.AddDatabase("live-db");
+var clientId     = builder.AddParameter("client-id", "makerverse", secret: true);
+var clientSecret = builder.AddParameter("client-secret", secret: true);
 
-var liveService = builder.AddProject<Projects.LiveService>("live-svc")
-    .WithReference(liveDb)
-    .WithReference(rabbitmq)
-    .WaitFor(liveDb)
-    .WaitFor(rabbitmq);
+var accountDb = postgres.AddDatabase("account-db");
+var accountService = builder.AddProject<Projects.AccountService>("account-svc")
+    .WithAuthCredentials(clientId, clientSecret)
+    .WithReference(accountDb)
+    .WaitFor(accountDb);
 
 var activityDb = postgres.AddDatabase("activity-db");
-
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
+    .WithAuthentication(accountService, clientId, clientSecret)
     .WithReference(activityDb)
     .WithReference(rabbitmq)
     .WaitFor(activityDb)
     .WaitFor(rabbitmq);
 
+var liveDb = postgres.AddDatabase("live-db");
+var liveService = builder.AddProject<Projects.LiveService>("live-svc")
+    .WithAuthentication(accountService, clientId, clientSecret)
+    .WithReference(liveDb)
+    .WithReference(rabbitmq)
+    .WaitFor(liveDb)
+    .WaitFor(rabbitmq);
+
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
+    .WithAuthentication(accountService, clientId, clientSecret)
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
     .WithReference(typesenseContainer)
     .WithReference(rabbitmq)
@@ -47,6 +59,8 @@ var searchService = builder.AddProject<Projects.SearchService>("search-svc")
 
 var yarp = builder.AddYarp("gateway")
     .WithConfiguration(yarpBuilder => {
+        yarpBuilder.AddRoute("/account/{**catch-all}", accountService);
+        yarpBuilder.AddRoute("/auth/{**catch-all}", accountService);
         yarpBuilder.AddRoute("/activities/{**catch-all}", activityService);
         yarpBuilder.AddRoute("/tags/{**catch-all}", activityService);
         yarpBuilder.AddRoute("/lives/{**catch-all}", liveService);

@@ -7,6 +7,7 @@ using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using OpenIddict.Validation.AspNetCore;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -37,6 +38,24 @@ public static class Extensions {
         // {
         //     options.AllowedSchemes = ["https"];
         // });
+
+        return builder;
+    }
+
+    public static TBuilder AddDefaultAuthentication<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder {
+        builder.Services.AddOpenIddict()
+            .AddValidation(options => {
+                options.SetIssuer(builder.Configuration["Identity:Url"]!);
+                
+                // Register the System.Net.Http integration.
+                options.UseSystemNetHttp();
+                
+                // Registers the ASP.NET Core host
+                options.UseAspNetCore();
+            });
+
+        builder.Services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        builder.Services.AddAuthorization();
 
         return builder;
     }
