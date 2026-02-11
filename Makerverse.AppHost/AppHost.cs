@@ -1,3 +1,6 @@
+using Makerverse.AppHost;
+using Microsoft.Extensions.Hosting;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 var compose = builder.AddDockerComposeEnvironment("production")
@@ -6,16 +9,12 @@ var compose = builder.AddDockerComposeEnvironment("production")
 var postgres = builder.AddPostgres("postgres", port: 5432)
     .WithDataVolume("postgres-data");
 
-// var keycloakDb = postgres.AddDatabase("keycloak-db");
-
-var keycloak = builder.AddKeycloak("keycloak", 6001)
-    .WithDataVolume("keycloak-data")
-    .WithEnvironment("KC_HTTP_ENABLED", "true")
-    .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    // .WithPostgres(keycloakDb, xaEnabled: true)
-    .WithHttpEndpoint(port: 6001, targetPort: 8080, "keycloak")
-    .WithExternalHttpEndpoints();
-    // .WaitFor(keycloakDb);
+var keycloakDb = postgres.AddDatabase("keycloak-db");
+if (!builder.Environment.IsDevelopment())
+    keycloakDb.WithCreationScript("CREATE DATABASE \"keycloak\");");
+var keycloak = builder.AddCustomKeycloak("keycloak")
+    .WithPostgres(keycloakDb)
+    .WaitFor(keycloakDb);
 
 var typesenseApiKey = builder.AddParameter("typesense-api-key", secret: true);
 
@@ -34,7 +33,6 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithManagementPlugin(port: 15672);
 
 var liveDb = postgres.AddDatabase("live-db");
-
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithReference(keycloak)
     .WithReference(liveDb)
@@ -44,7 +42,6 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WaitFor(rabbitmq);
 
 var activityDb = postgres.AddDatabase("activity-db");
-
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
     .WithReference(keycloak)
     .WithReference(activityDb)
