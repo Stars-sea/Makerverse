@@ -1,9 +1,7 @@
 using ActivityService.Data;
 using ActivityService.Services;
+using Common;
 using Microsoft.EntityFrameworkCore;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Wolverine;
 using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,27 +14,13 @@ builder.AddServiceDefaults();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TagService>();
+builder.Services.AddKeycloakAuthentication();
 
-builder.Services.AddAuthentication()
-    .AddKeycloakJwtBearer(
-        serviceName: "keycloak",
-        realm: "makerverse",
-        options => {
-            options.RequireHttpsMetadata = false;
-            options.Audience             = "makerverse";
-        }
-    );
 builder.AddNpgsqlDbContext<ActivityDbContext>("activity-db");
 
-builder.Services.AddOpenTelemetry().WithTracing(providerBuilder =>
-    providerBuilder.SetResourceBuilder(ResourceBuilder.CreateDefault()
-            .AddService(builder.Environment.ApplicationName))
-        .AddSource("Wolverine")
-);
-
-builder.Host.UseWolverine(options => {
-    options.UseRabbitMqUsingNamedConnection("messaging").AutoProvision();
+await builder.UseWolverineWithRabbitMqAsync(options => {
     options.PublishAllMessages().ToRabbitExchange("activities");
+    options.ApplicationAssembly = typeof(Program).Assembly;
 });
 
 var app = builder.Build();

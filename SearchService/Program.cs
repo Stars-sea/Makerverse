@@ -1,9 +1,7 @@
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
+using Common;
 using SearchService.Data;
 using Typesense;
 using Typesense.Setup;
-using Wolverine;
 using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,14 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
 
-builder.Services.AddOpenTelemetry().WithTracing(providerBuilder =>
-    providerBuilder.SetResourceBuilder(ResourceBuilder.CreateDefault()
-            .AddService(builder.Environment.ApplicationName))
-        .AddSource("Wolverine")
-);
-
-builder.Host.UseWolverine(options => {
-    options.UseRabbitMqUsingNamedConnection("messaging").AutoProvision();
+await builder.UseWolverineWithRabbitMqAsync(options => {
     options.ListenToRabbitQueue(
         "lives.search",
         cfg => cfg.BindExchange("lives")
@@ -29,6 +20,7 @@ builder.Host.UseWolverine(options => {
         "activities.search",
         cfg => cfg.BindExchange("activities")
     );
+    options.ApplicationAssembly = typeof(Program).Assembly;
 });
 
 builder.Services.AddTypesenseClient(config => {
