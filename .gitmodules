@@ -1,0 +1,4 @@
+[submodule "livestream-rs"]
+	path = livestream-rs
+	url = git@github.com:Stars-sea/livestream-rs.git
+	branch = main
