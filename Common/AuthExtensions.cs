@@ -18,7 +18,8 @@ public static class AuthExtensions {
                     options.TokenValidationParameters = new TokenValidationParameters {
                         ValidIssuers = [
                             "http://localhost:8080/realms/makerverse",
-                            "http://keycloak/realms/makerverse"
+                            "http://keycloak/realms/makerverse",
+                            "http://id.makerverse.local/realms/makerverse"
                         ]
                     };
                 }

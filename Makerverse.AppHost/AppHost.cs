@@ -7,14 +7,16 @@ var compose = builder.AddDockerComposeEnvironment("production")
     .WithDashboard(dashboard => dashboard.WithHostPort(8080));
 
 var postgres = builder.AddPostgres("postgres", port: 5432)
-    .WithDataVolume("postgres-data");
+    .WithDataVolume("postgres-data")
+    .WithBindMount("./data/postgres", "/docker-entrypoint-initdb.d");
 
 var keycloakDb = postgres.AddDatabase("keycloak-db");
-if (!builder.Environment.IsDevelopment())
-    keycloakDb.WithCreationScript("CREATE DATABASE \"keycloak\");");
 var keycloak = builder.AddCustomKeycloak("keycloak")
+    .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
-    .WaitFor(keycloakDb);
+    .WaitFor(keycloakDb)
+    .WithEnvironment("VIRTUAL_HOST", "id.makerverse.local")
+    .WithEnvironment("VIRTUAL_PORT", "8080");
 
 var typesenseApiKey = builder.AddParameter("typesense-api-key", secret: true);
 
@@ -64,6 +66,15 @@ var yarp = builder.AddYarp("gateway")
         yarpBuilder.AddRoute("/lives/{**catch-all}", liveService);
         yarpBuilder.AddRoute("/search/{**catch-all}", searchService);
     })
-    .WithHostPort(8001);
+    .WithEnvironment("ASPNETCORE_URLS", "http://*:8001")
+    .WithEndpoint(8001, 8001, scheme: "http", name: "gateway", isExternal: true)
+    .WithEnvironment("VIRTUAL_HOST", "api.makerverse.local")
+    .WithEnvironment("VIRTUAL_PORT", "8001");
+
+if (!builder.Environment.IsDevelopment()) {
+    builder.AddContainer("nginx-proxy", "nginxproxy/nginx-proxy", "1.9")
+        .WithEndpoint(80, 80, "nginx", isExternal: true)
+        .WithBindMount("/var/run/docker.sock", "/tmp/docker.sock", isReadOnly: true);
+}
 
 builder.Build().Run();

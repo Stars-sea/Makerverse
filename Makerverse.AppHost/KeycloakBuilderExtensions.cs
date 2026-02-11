@@ -17,7 +17,7 @@ public static class KeycloakBuilderExtensions {
             .WithImage("keycloak/keycloak")
             .WithImageTag(imageTag)
             .WithImageRegistry("quay.io")
-            .WithHttpEndpoint(targetPort: 8080)
+            .WithHttpEndpoint(port: 6001, targetPort: 8080)
             .WithHttpEndpoint(targetPort: 9000, name: "management")
             .WithHttpHealthCheck(path: "/health", statusCode: 200, endpointName: "management")
             .WithOtlpExporter()

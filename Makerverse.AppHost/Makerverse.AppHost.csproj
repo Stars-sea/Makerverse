@@ -23,4 +23,8 @@
       <ProjectReference Include="..\SearchService\SearchService.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="data\keycloak-realms\" />
+    </ItemGroup>
+
 </Project>
