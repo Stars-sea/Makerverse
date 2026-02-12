@@ -29,7 +29,7 @@ public class TagsController(
         return tag;
     }
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<ActionResult<Tag>> CreateTag([FromBody] CreateTagDto dto) {
         if (await db.Tags.AnyAsync(t => t.Slug == dto.Slug)) {
@@ -44,7 +44,7 @@ public class TagsController(
         db.Tags.Add(tag);
         await db.SaveChangesAsync();
 
-        tagService.InvalidateCache();
+        await tagService.InvalidateCacheAsync();
         return CreatedAtAction(
             nameof(GetTag),
             new {
@@ -54,7 +54,7 @@ public class TagsController(
         );
     }
 
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{slug}")]
     public async Task<ActionResult> DeleteTag(string slug) {
         Tag? tag = await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug);
@@ -65,7 +65,7 @@ public class TagsController(
         db.Tags.Remove(tag);
         await db.SaveChangesAsync();
 
-        tagService.InvalidateCache();
+        await tagService.InvalidateCacheAsync();
 
         return NoContent();
     }

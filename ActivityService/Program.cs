@@ -12,7 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
 
-builder.Services.AddMemoryCache();
+builder.AddRedisClient("redis");
 builder.Services.AddScoped<TagService>();
 builder.Services.AddKeycloakAuthentication();
 

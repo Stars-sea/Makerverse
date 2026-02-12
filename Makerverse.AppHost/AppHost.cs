@@ -34,6 +34,17 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithDataVolume("rabbitmq-data")
     .WithManagementPlugin(port: 15672);
 
+#pragma warning disable ASPIRECERTIFICATES001
+var redis = builder.AddRedis("redis", port: 6379)
+    .WithoutHttpsCertificate()
+    .WithDataVolume("redis-data");
+#pragma warning restore ASPIRECERTIFICATES001
+
+var minio = builder.AddMinioContainer("minio", port: 9000)
+    .WithDataVolume("minio-data");
+
+// var livestreamService = builder.AddRustApp("livestream-svc", "../livestream-rs");
+
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithReference(keycloak)
@@ -48,9 +59,11 @@ var activityService = builder.AddProject<Projects.ActivityService>("activity-svc
     .WithReference(keycloak)
     .WithReference(activityDb)
     .WithReference(rabbitmq)
+    .WithReference(redis)
     .WaitFor(keycloak)
     .WaitFor(activityDb)
-    .WaitFor(rabbitmq);
+    .WaitFor(rabbitmq)
+    .WaitFor(redis);
 
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
