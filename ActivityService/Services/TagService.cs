@@ -9,12 +9,13 @@ public class TagService(
     ActivityDbContext db,
     ILogger<TagService> logger
 ) {
-    private const           string        CacheKey  = "Tags";
-    private static readonly SemaphoreSlim Semaphore = new(1, 1);
+    private const string CacheKey = "Tags";
 
     private IDatabase Cache => redis.GetDatabase();
 
-    public async ValueTask<IEnumerable<string>> UpdateTagsAsync() {
+    private static readonly SemaphoreSlim Semaphore = new(1, 1);
+
+    private async ValueTask<IEnumerable<string>> UpdateTagsAsync() {
         List<string>? tags = null;
         try {
             tags = await db.Tags.AsNoTracking()
@@ -44,18 +45,7 @@ public class TagService(
         }
     }
 
-    public async ValueTask<IEnumerable<string>> GetTagSlugsAsync() {
-        if (await Cache.KeyExistsAsync(CacheKey)) {
-            var members = await Cache.SetMembersAsync(CacheKey);
-            if (members.Length > 0) {
-                return members.Select(v => v.ToString());
-            }
-        }
-
-        return await GetOrUpdateTagsInternalAsync();
-    }
-
-    private async ValueTask<IEnumerable<string>> GetOrUpdateTagsInternalAsync() {
+    public async ValueTask<IEnumerable<string>> GetOrUpdateTagsAsync() {
         if (await Cache.KeyExistsAsync(CacheKey))
             return (await Cache.SetMembersAsync(CacheKey)).Select(v => v.ToString());
 
@@ -72,19 +62,19 @@ public class TagService(
         }
     }
 
-    public async ValueTask InvalidateCacheAsync(IDatabaseAsync? database = null) {
-        await (database ?? Cache).KeyDeleteAsync(CacheKey);
+    public async ValueTask InvalidateCacheAsync() {
+        await Cache.KeyDeleteAsync(CacheKey);
     }
 
     public async ValueTask<bool> AreTagsValidAsync(IEnumerable<string> tags) {
-        var tagArray = tags as string[] ?? tags.ToArray();
+        string[] tagArray = tags as string[] ?? tags.ToArray();
         if (tagArray.Length == 0) return true;
 
         if (!await Cache.KeyExistsAsync(CacheKey))
-            await GetOrUpdateTagsInternalAsync();
+            await GetOrUpdateTagsAsync();
 
-        RedisValue[] redisValues = tagArray.Select(s => (RedisValue)s).ToArray();
-        bool[]       results     = await Cache.SetContainsAsync(CacheKey, redisValues);
+        var    redisValues = tagArray.Select(s => (RedisValue)s).ToArray();
+        bool[] results     = await Cache.SetContainsAsync(CacheKey, redisValues);
 
         return results.All(r => r);
     }

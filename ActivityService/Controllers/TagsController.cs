@@ -22,10 +22,10 @@ public class TagsController(
 
     [HttpGet("{slug}")]
     public async Task<ActionResult<Tag>> GetTag(string slug) {
-        Tag? tag = await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug);
-        if (tag is null) {
+        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not {} tag) {
             return NotFound($"Tag with slug '{slug}' not found.");
         }
+
         return tag;
     }
 
@@ -57,8 +57,7 @@ public class TagsController(
     [Authorize(Roles = "Admin")]
     [HttpDelete("{slug}")]
     public async Task<ActionResult> DeleteTag(string slug) {
-        Tag? tag = await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug);
-        if (tag is null) {
+        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not {} tag) {
             return NotFound($"Tag with slug '{slug}' not found.");
         }
 
