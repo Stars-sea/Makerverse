@@ -43,7 +43,14 @@ var redis = builder.AddRedis("redis", port: 6379)
 var minio = builder.AddMinioContainer("minio", port: 9000)
     .WithDataVolume("minio-data");
 
-// var livestreamService = builder.AddRustApp("livestream-svc", "../livestream-rs");
+var livestreamService = builder.AddDockerfile("livestream-svc", "../livestream-rs")
+    .WithEnvironment("GRPC_PORT", "50051")
+    .WithEnvironment("MINIO_BUCKET", "videos")
+    .WithEndpoint(port: 50051, targetPort: 50051, scheme: "grpc")
+    .WithReference(redis)
+    .WithReference(minio)
+    .WaitFor(redis)
+    .WaitFor(minio);
 
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
