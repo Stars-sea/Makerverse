@@ -1,5 +1,7 @@
 using Common;
 using LiveService.Data;
+using LiveService.Protos;
+using LiveService.Services;
 using Microsoft.EntityFrameworkCore;
 using Wolverine.RabbitMQ;
 
@@ -10,6 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
+
+builder.AddRedisClient("redis");
+
 builder.Services.AddKeycloakAuthentication();
 
 builder.AddNpgsqlDbContext<LiveDbContext>("live-db");
@@ -18,6 +23,15 @@ await builder.UseWolverineWithRabbitMqAsync(options => {
     options.PublishAllMessages().ToRabbitExchange("lives");
     options.ApplicationAssembly = typeof(Program).Assembly;
 });
+
+builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
+    string? grpcUri = builder.Configuration["services:livestream-svc:grpc:0"];
+    if (string.IsNullOrEmpty(grpcUri))
+        throw new InvalidOperationException("Livestream service gRPC endpoint is not configured.");
+    
+    options.Address = new Uri(grpcUri);
+});
+builder.Services.AddHostedService<LivestreamWatchWorker>();
 
 var app = builder.Build();
 

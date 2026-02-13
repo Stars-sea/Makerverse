@@ -28,8 +28,6 @@ var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
     .WithHttpEndpoint(port: 8108, targetPort: 8108, name: "typesense")
     .WithHttpHealthCheck("/health", 200, "typesense");
 
-var typesenseContainer = typesense.GetEndpoint("typesense");
-
 var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithDataVolume("rabbitmq-data")
     .WithManagementPlugin(port: 15672);
@@ -37,16 +35,14 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
 #pragma warning disable ASPIRECERTIFICATES001
 var redis = builder.AddRedis("redis", port: 6379)
     .WithoutHttpsCertificate()
-    .WithDataVolume("redis-data");
+    .WithDataVolume("redis-data")
+    .WithRedisInsight();
 #pragma warning restore ASPIRECERTIFICATES001
 
 var minio = builder.AddMinioContainer("minio", port: 9000)
     .WithDataVolume("minio-data");
 
-var livestreamService = builder.AddDockerfile("livestream-svc", "../livestream-rs")
-    .WithEnvironment("GRPC_PORT", "50051")
-    .WithEnvironment("MINIO_BUCKET", "videos")
-    .WithEndpoint(port: 50051, targetPort: 50051, scheme: "grpc")
+var livestreamService = builder.AddLivestreamService("livestream-svc")
     .WithReference(redis)
     .WithReference(minio)
     .WaitFor(redis)
@@ -57,9 +53,13 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithReference(keycloak)
     .WithReference(liveDb)
     .WithReference(rabbitmq)
+    .WithReference(redis)
+    .WithReference(livestreamService.GetEndpoint("grpc"))
     .WaitFor(keycloak)
     .WaitFor(liveDb)
-    .WaitFor(rabbitmq);
+    .WaitFor(rabbitmq)
+    .WaitFor(redis)
+    .WaitFor(livestreamService);
 
 var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
@@ -74,7 +74,7 @@ var activityService = builder.AddProject<Projects.ActivityService>("activity-svc
 
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
-    .WithReference(typesenseContainer)
+    .WithReference(typesense.GetEndpoint("typesense"))
     .WithReference(rabbitmq)
     .WaitFor(typesense)
     .WaitFor(rabbitmq);
