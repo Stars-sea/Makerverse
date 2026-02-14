@@ -5,7 +5,7 @@ using StackExchange.Redis;
 namespace LiveService.Services;
 
 public sealed class LivestreamWatchWorker(
-    LiveDbContext db,
+    IServiceProvider services,
     IConnectionMultiplexer redis,
     ILogger<LivestreamWatchWorker> logger
 ) : BackgroundService {
@@ -23,15 +23,18 @@ public sealed class LivestreamWatchWorker(
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    private async void RedisChannelSubscriber(RedisChannel channel, RedisValue message, CancellationToken token) {
+    private async void RedisChannelSubscriber(RedisChannel channel, RedisValue message, CancellationToken ct) {
         try {
+            using IServiceScope scope = services.CreateAsyncScope();
+            LiveDbContext       db    = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+
             string[] parts = channel.ToString().Split(':');
             if (parts.Length != 4) return;
 
             string liveId    = parts[3];
             string eventType = message.ToString();
 
-            if (await db.Lives.FindAsync([liveId], token) is not {} live) {
+            if (await db.Lives.FindAsync([liveId], ct) is not {} live) {
                 logger.LogWarning("Received unknown live id: {LiveId}, ignored", liveId);
                 return;
             }
@@ -42,13 +45,12 @@ public sealed class LivestreamWatchWorker(
 
             logger.LogDebug("Received event {EventType} for live {LiveId}", eventType, liveId);
 
-            // TODO: implement LivestreamService
             live.Status = eventType switch {
-                "terminate" => LiveStatus.Stopped,
-                "connected" => LiveStatus.Started,
-                _           => live.Status
+                "connected" when live.Status == LiveStatus.Started  => LiveStatus.Started,
+                "terminate" when live.Status == LiveStatus.Stopping => LiveStatus.Stopped,
+                _                                                   => LiveStatus.Invalid
             };
-            await db.SaveChangesAsync(token);
+            await db.SaveChangesAsync(ct);
         }
         catch (Exception e) {
             logger.LogError(e, "Error processing Redis message on channel {Channel}: {Message}", channel, message);

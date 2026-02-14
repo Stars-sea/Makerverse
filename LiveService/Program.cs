@@ -31,6 +31,7 @@ builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
     
     options.Address = new Uri(grpcUri);
 });
+builder.Services.AddScoped<LivestreamService>();
 builder.Services.AddHostedService<LivestreamWatchWorker>();
 
 var app = builder.Build();

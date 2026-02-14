@@ -6,4 +6,5 @@ public enum LiveStatus {
     Started,
     Stopping,
     Stopped,
+    Invalid
 }

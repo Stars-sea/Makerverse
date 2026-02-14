@@ -1,8 +1,10 @@
 ﻿using System.Security.Claims;
+using Common;
 using Contracts;
 using LiveService.Data;
 using LiveService.DTOs;
 using LiveService.Models;
+using LiveService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +16,7 @@ namespace LiveService.Controllers;
 [Route("[controller]")]
 public class LivesController(
     LiveDbContext db,
+    LivestreamService livestreamService,
     IMessageBus bus
 ) : ControllerBase {
 
@@ -57,8 +60,7 @@ public class LivesController(
     [Authorize]
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateLive(string id, CreateLiveDto dto) {
-        Live? live = await db.Lives.FindAsync(id);
-        if (live is null) return NotFound();
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
@@ -75,11 +77,13 @@ public class LivesController(
     [Authorize]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteLive(string id) {
-        Live? live = await db.Lives.FindAsync(id);
-        if (live is null) return NotFound();
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
+
+        if (live.Status != LiveStatus.Stopped && live.Status != LiveStatus.Invalid)
+            return BadRequest("Cannot delete the active live.");
 
         db.Lives.Remove(live);
         await db.SaveChangesAsync();
@@ -87,5 +91,63 @@ public class LivesController(
         await bus.PublishAsync(new LiveDeleted(live.Id));
 
         return NoContent();
+    }
+
+    [Authorize]
+    [HttpPut("{id}/status")]
+    public async Task<ActionResult<LiveStatusResponseDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null || live.StreamerId != userId) return Forbid();
+
+        if (dto.Status == "start") {
+            var ret = await livestreamService.StartLivestreamAsync(live.Id);
+            return ret.MatchFirst(
+                resp => Ok(new LiveStatusResponseDto(
+                        resp.Port.ToString(),// TODO
+                        resp.Passphrase
+                    )
+                ),
+                error => error.ToActionResult()
+            );
+        }
+
+        if (dto.Status == "stop") {
+            var ret = await livestreamService.StopLivestreamAsync(live.Id);
+            return ret.MatchFirst(
+                _ => NoContent(),
+                error => error.ToActionResult()
+            );
+        }
+
+        return BadRequest($"Invalid status value '{dto.Status}'.");
+    }
+
+    [Authorize]
+    [HttpGet("{id}/status")]
+    public async Task<ActionResult<LiveStatusResponseDto>> GetLiveStatus(string id) {
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null || live.StreamerId != userId) return Forbid();
+
+        var ret = await livestreamService.GetStreamInfoAsync(live.Id);
+        return ret.MatchFirst(
+            info => Ok(new LiveStatusResponseDto(
+                info.Port.ToString(),
+                info.Passphrase
+            )),
+            error => error.ToActionResult()
+        );
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<string[]>> ListOnlineLives() {
+        var ret = await livestreamService.GetActiveStreamAsync();
+        return ret.MatchFirst(
+            streamIds => Ok(streamIds.ToArray()),
+            error => error.ToActionResult()
+        );
     }
 }
