@@ -10,6 +10,15 @@ public class LivestreamService(
     Livestream.LivestreamClient grpc
 ) {
 
+    private static string GeneratePassphrase(int length) {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        Random random = new();
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+
+    }
+
     public async Task<ErrorOr<StartPullStreamResponse>> StartLivestreamAsync(
         string liveId,
         CancellationToken ct = default
@@ -27,8 +36,10 @@ public class LivestreamService(
 
         StartPullStreamResponse? resp;
         try {
-            resp = await grpc.StartPullStreamAsync(new StartPullStreamRequest {
-                    LiveId = liveId
+            resp = await grpc.StartPullStreamAsync(
+                new StartPullStreamRequest {
+                    LiveId     = liveId,
+                    Passphrase = GeneratePassphrase(32)
                 },
                 cancellationToken: ct
             )!;
@@ -63,7 +74,8 @@ public class LivestreamService(
 
         StopPullStreamResponse? resp;
         try {
-            resp = await grpc.StopPullStreamAsync(new StopPullStreamRequest {
+            resp = await grpc.StopPullStreamAsync(
+                new StopPullStreamRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct
@@ -87,7 +99,8 @@ public class LivestreamService(
         CancellationToken ct = default
     ) {
         try {
-            return await grpc.GetStreamInfoAsync(new GetStreamInfoRequest {
+            return await grpc.GetStreamInfoAsync(
+                new GetStreamInfoRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct

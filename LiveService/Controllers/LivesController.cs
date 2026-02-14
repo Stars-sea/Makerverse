@@ -104,11 +104,7 @@ public class LivesController(
         if (dto.Status == "start") {
             var ret = await livestreamService.StartLivestreamAsync(live.Id);
             return ret.MatchFirst(
-                resp => Ok(new LiveStatusResponseDto(
-                        resp.Port.ToString(),// TODO
-                        resp.Passphrase
-                    )
-                ),
+                resp => Ok(LiveStatusResponseDto.FromResp(resp)),
                 error => error.ToActionResult()
             );
         }
@@ -134,10 +130,7 @@ public class LivesController(
 
         var ret = await livestreamService.GetStreamInfoAsync(live.Id);
         return ret.MatchFirst(
-            info => Ok(new LiveStatusResponseDto(
-                info.Port.ToString(),
-                info.Passphrase
-            )),
+            resp => Ok(LiveStatusResponseDto.FromResp(resp)),
             error => error.ToActionResult()
         );
     }
