@@ -1,6 +1,8 @@
-﻿using LiveService.Data;
+﻿using Contracts;
+using LiveService.Data;
 using LiveService.Models;
 using StackExchange.Redis;
+using Wolverine;
 
 namespace LiveService.Services;
 
@@ -25,8 +27,10 @@ public sealed class LivestreamWatchWorker(
 
     private async void RedisChannelSubscriber(RedisChannel channel, RedisValue message, CancellationToken ct) {
         try {
-            using IServiceScope scope = services.CreateAsyncScope();
-            LiveDbContext       db    = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+            await using AsyncServiceScope scope = services.CreateAsyncScope();
+
+            IMessageBus   bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
+            LiveDbContext db  = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
 
             string[] parts = channel.ToString().Split(':');
             if (parts.Length != 4) return;
@@ -45,11 +49,27 @@ public sealed class LivestreamWatchWorker(
 
             logger.LogDebug("Received event {EventType} for live {LiveId}", eventType, liveId);
 
-            live.Status = eventType switch {
-                "connected" when live.Status == LiveStatus.Started  => LiveStatus.Started,
-                "terminate" when live.Status == LiveStatus.Stopping => LiveStatus.Stopped,
-                _                                                   => LiveStatus.Invalid
-            };
+            var isValidTransition = true;
+            if (eventType == "connected") {
+                isValidTransition = live.Status == LiveStatus.Starting;
+                live.StartedAt    = DateTime.UtcNow;
+                live.Status       = LiveStatus.Started;
+
+                await bus.PublishAsync(new LiveConnected(live.Id, isValidTransition));
+            }
+            else if (eventType == "terminate") {
+                isValidTransition = live.Status == LiveStatus.Stopping;
+                live.StoppedAt    = DateTime.UtcNow;
+                live.Status = isValidTransition
+                    ? LiveStatus.Stopped
+                    : LiveStatus.Invalid;
+
+                await bus.PublishAsync(new LiveTerminate(live.Id, isValidTransition));
+            }
+
+            if (!isValidTransition)
+                logger.LogWarning("Received event {EventType} for live {LiveId} which is in invalid status", eventType, liveId);
+
             await db.SaveChangesAsync(ct);
         }
         catch (Exception e) {
