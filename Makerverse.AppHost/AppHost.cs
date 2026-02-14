@@ -43,6 +43,7 @@ var minio = builder.AddMinioContainer("minio", port: 9000)
     .WithDataVolume("minio-data");
 
 var livestreamService = builder.AddLivestreamService("livestream-svc")
+    .WithEnvironment("SRT_HOST", "live.makerverse.local")
     .WithReference(redis)
     .WithReference(minio)
     .WaitFor(redis)
@@ -86,10 +87,9 @@ var yarp = builder.AddYarp("gateway")
         yarpBuilder.AddRoute("/lives/{**catch-all}", liveService);
         yarpBuilder.AddRoute("/search/{**catch-all}", searchService);
     })
-    .WithEnvironment("ASPNETCORE_URLS", "http://*:8001")
-    .WithEndpoint(8001, 8001, scheme: "http", name: "gateway", isExternal: true)
+    .WithHostPort(8001)
     .WithEnvironment("VIRTUAL_HOST", "api.makerverse.local")
-    .WithEnvironment("VIRTUAL_PORT", "8001");
+    .WithEnvironment("VIRTUAL_PORT", "5000");
 
 if (!builder.Environment.IsDevelopment()) {
     builder.AddContainer("nginx-proxy", "nginxproxy/nginx-proxy", "1.9")

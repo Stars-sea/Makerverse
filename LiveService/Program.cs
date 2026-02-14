@@ -28,7 +28,7 @@ builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
     string? grpcUri = builder.Configuration["services:livestream-svc:grpc:0"];
     if (string.IsNullOrEmpty(grpcUri))
         throw new InvalidOperationException("Livestream service gRPC endpoint is not configured.");
-    
+
     options.Address = new Uri(grpcUri);
 });
 builder.Services.AddScoped<LivestreamService>();
