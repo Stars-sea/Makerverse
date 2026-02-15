@@ -1,7 +1,9 @@
-﻿namespace Makerverse.AppHost;
+﻿using System.Net.Sockets;
+
+namespace Makerverse.AppHost;
 
 public static class LivestreamServiceBuilderExtensions {
-    
+
     private static string RangeToString(Range range) {
         if (range.Start.IsFromEnd || range.End.IsFromEnd) {
             throw new ArgumentException("Range values must be from the start.");
@@ -29,9 +31,16 @@ public static class LivestreamServiceBuilderExtensions {
 
         (int offset, int length) = srtPorts.Value.GetOffsetAndLength(int.MaxValue);
         foreach (int srtPort in Enumerable.Range(offset, length)) {
-            container.WithEndpoint(srtPort, srtPort, "udp", $"srt-{srtPort}", isExternal: true);
+            container.WithEndpoint(
+                srtPort,
+                srtPort,
+                "srt",
+                $"srt-{srtPort}",
+                protocol: ProtocolType.Udp,
+                isExternal: true
+            );
         }
-        
+
         return container;
     }
 }
