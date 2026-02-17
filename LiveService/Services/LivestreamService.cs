@@ -19,7 +19,7 @@ public class LivestreamService(
 
     }
 
-    public async Task<ErrorOr<StartPullStreamResponse>> StartLivestreamAsync(
+    public async Task<ErrorOr<StreamInfoResponse>> StartLivestreamAsync(
         string liveId,
         CancellationToken ct = default
     ) {
@@ -34,7 +34,7 @@ public class LivestreamService(
             );
         }
 
-        StartPullStreamResponse? resp;
+        StreamInfoResponse? resp;
         try {
             resp = await grpc.StartPullStreamAsync(
                 new StartPullStreamRequest {
@@ -94,7 +94,7 @@ public class LivestreamService(
         return resp.IsSuccess;
     }
 
-    public async Task<ErrorOr<GetStreamInfoResponse>> GetStreamInfoAsync(
+    public async Task<ErrorOr<StreamInfoResponse>> GetStreamInfoAsync(
         string liveId,
         CancellationToken ct = default
     ) {
