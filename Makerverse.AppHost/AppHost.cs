@@ -35,8 +35,7 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
 #pragma warning disable ASPIRECERTIFICATES001
 var redis = builder.AddRedis("redis", port: 6379)
     .WithoutHttpsCertificate()
-    .WithDataVolume("redis-data")
-    .WithRedisInsight();
+    .WithDataVolume("redis-data");
 #pragma warning restore ASPIRECERTIFICATES001
 
 var minio = builder.AddMinioContainer("minio", port: 9000)
@@ -61,6 +60,8 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WaitFor(rabbitmq)
     .WaitFor(redis)
     .WaitFor(livestreamService);
+
+livestreamService.WithReference(liveService);
 
 var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")

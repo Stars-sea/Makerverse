@@ -24,6 +24,7 @@ await builder.UseWolverineWithRabbitMqAsync(options => {
     options.ApplicationAssembly = typeof(Program).Assembly;
 });
 
+builder.Services.AddGrpc();
 builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
     string? grpcUri = builder.Configuration["services:livestream-svc:grpc:0"];
     if (string.IsNullOrEmpty(grpcUri))
@@ -32,7 +33,6 @@ builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
     options.Address = new Uri(grpcUri);
 });
 builder.Services.AddScoped<LivestreamService>();
-builder.Services.AddHostedService<LivestreamWatchWorker>();
 
 var app = builder.Build();
 
@@ -42,6 +42,7 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.MapControllers();
+app.MapGrpcService<LivestreamCallbackService>();
 app.MapDefaultEndpoints();
 
 using (IServiceScope scope = app.Services.CreateScope()) {

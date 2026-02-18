@@ -2,5 +2,6 @@
 
 public record LiveTerminate(
     string LiveId,
-    bool IsValidTransition
+    bool IsValidTransition,
+    string? ErrorMessage
 );
