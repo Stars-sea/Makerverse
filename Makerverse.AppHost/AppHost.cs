@@ -54,11 +54,13 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithReference(liveDb)
     .WithReference(rabbitmq)
     .WithReference(redis)
+    .WithReference(minio)
     .WithReference(livestreamService.GetEndpoint("grpc"))
     .WaitFor(keycloak)
     .WaitFor(liveDb)
     .WaitFor(rabbitmq)
     .WaitFor(redis)
+    .WaitFor(minio)
     .WaitFor(livestreamService);
 
 livestreamService.WithReference(liveService);

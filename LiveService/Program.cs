@@ -3,6 +3,7 @@ using LiveService.Data;
 using LiveService.Protos;
 using LiveService.Services;
 using Microsoft.EntityFrameworkCore;
+using Minio;
 using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,7 @@ builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
 
 builder.AddRedisClient("redis");
+builder.AddMinioClient("minio");
 
 builder.Services.AddKeycloakAuthentication();
 
