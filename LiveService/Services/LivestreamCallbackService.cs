@@ -9,7 +9,8 @@ namespace LiveService.Services;
 
 public class LivestreamCallbackService(
     IMessageBus bus,
-    LiveDbContext db
+    LiveDbContext db,
+    ILogger<LivestreamCallbackService> logger
 ) : LivestreamCallback.LivestreamCallbackBase {
 
     public override async Task<NotifyResponse> NotifyLivestreamConnected(NotifyConnectedRequest request, ServerCallContext context) {
@@ -17,9 +18,14 @@ public class LivestreamCallbackService(
             return new NotifyResponse();
 
         bool isValidTransition = live.Status == LiveStatus.Starting;
+
+        if (isValidTransition)
+            logger.LogInformation("Received livestream connected notification for live {LiveId}", live.Id);
+        else
+            logger.LogWarning("Received livestream connected notification for live {LiveId} which is in status {Status}", live.Id, live.Status);
+
         live.Status    = LiveStatus.Started;
         live.StartedAt = DateTime.UtcNow;
-
         await db.SaveChangesAsync();
 
         await bus.PublishAsync(new LiveConnected(live.Id, isValidTransition));
@@ -31,10 +37,15 @@ public class LivestreamCallbackService(
         if (await db.Lives.FindAsync(request.LiveId) is not {} live)
             return new NotifyResponse();
 
-        bool isValidTransition = live.Status == LiveStatus.Stopping;
-        live.Status    = LiveStatus.Stopped;
-        live.StoppedAt = DateTime.UtcNow;
+        bool isValidTransition = live.Status == LiveStatus.Stopping && request.ErrorMessage == null;
 
+        if (isValidTransition)
+            logger.LogInformation("Received livestream terminate notification for live {LiveId}", live.Id);
+        else
+            logger.LogWarning("Received livestream terminate notification for live {LiveId} which is in status {Status}", live.Id, live.Status);
+
+        live.Status    = isValidTransition ? LiveStatus.Stopped : LiveStatus.Invalid;
+        live.StoppedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
         await bus.PublishAsync(new LiveTerminate(live.Id, isValidTransition, request.ErrorMessage));
