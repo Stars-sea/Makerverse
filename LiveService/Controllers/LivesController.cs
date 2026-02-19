@@ -17,8 +17,11 @@ namespace LiveService.Controllers;
 public class LivesController(
     LiveDbContext db,
     LivestreamService livestreamService,
+    LivestreamPersistentService persistentService,
     IMessageBus bus
 ) : ControllerBase {
+
+    #region Live Management (CRUD)
 
     [Authorize]
     [HttpPost]
@@ -47,6 +50,18 @@ public class LivesController(
     [HttpGet]
     public async Task<ActionResult<List<Live>>> GetLives() {
         return await db.Lives.AsQueryable()
+            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+    }
+
+    [HttpGet("online")]
+    public async Task<ActionResult<List<Live>>> ListOnlineLives() {
+        var ret = await livestreamService.GetActiveStreamAsync();
+        if (ret.IsError) return ret.FirstError.ToActionResult();
+
+        var onlineStreamIds = ret.Value;
+
+        return await db.Lives.AsQueryable()
+            .Where(live => onlineStreamIds.Contains(live.Id))
             .OrderByDescending(x => x.CreatedAt).ToListAsync();
     }
 
@@ -93,6 +108,10 @@ public class LivesController(
         return NoContent();
     }
 
+    #endregion
+
+    #region Livestream Control and Status
+
     [Authorize]
     [HttpPut("{id}/status")]
     public async Task<ActionResult<LiveStatusResponseDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
@@ -103,10 +122,8 @@ public class LivesController(
 
         if (dto.Status == "start") {
             var ret = await livestreamService.StartLivestreamAsync(live.Id);
-            return ret.MatchFirst(
-                resp => Ok(LiveStatusResponseDto.FromResp(resp)),
-                error => error.ToActionResult()
-            );
+            if (ret.IsError) return ret.FirstError.ToActionResult();
+            return LiveStatusResponseDto.FromResp(ret.Value);
         }
 
         if (dto.Status == "stop") {
@@ -135,12 +152,38 @@ public class LivesController(
         );
     }
 
-    [HttpGet]
-    public async Task<ActionResult<string[]>> ListOnlineLives() {
-        var ret = await livestreamService.GetActiveStreamAsync();
-        return ret.MatchFirst(
-            streamIds => Ok(streamIds.ToArray()),
-            error => error.ToActionResult()
-        );
+    #endregion
+
+    #region Live viewing (for viewers)
+
+    [HttpGet("{id}/segments")]
+    public async Task<ActionResult<List<string>>> ListLiveSegments(string id) {
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (live.Status is LiveStatus.Created or LiveStatus.Starting)
+            return BadRequest("Live is not started yet.");
+
+        // TODO: we can add pagination here if the number of segments becomes large
+        List<string> segments = [];
+        await foreach (string segment in persistentService.ListSegmentsAsync(id)) {
+            segments.Add(segment);
+        }
+        return segments;
     }
+
+    [HttpGet("{id}/segments/{num:int}")]
+    public async Task<IActionResult> GetLiveSegment(string id, int num) {
+        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (live.Status is LiveStatus.Created or LiveStatus.Starting)
+            return BadRequest("Live is not started yet.");
+
+        if (await persistentService.GetSegmentAsync(id, num, Response.Body) is {} error)
+            return error.ToActionResult();
+
+        Response.ContentType = "video/MP2T";
+        Response.Headers.Append("Accept-Ranges", "bytes");
+        return Empty;
+    }
+
+    #endregion
+
 }

@@ -3,7 +3,6 @@ using LiveService.Data;
 using LiveService.Protos;
 using LiveService.Services;
 using Microsoft.EntityFrameworkCore;
-using Minio;
 using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +34,7 @@ builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
     options.Address = new Uri(grpcUri);
 });
 builder.Services.AddScoped<LivestreamService>();
+builder.Services.AddScoped<LivestreamPersistentService>();
 
 var app = builder.Build();
 
