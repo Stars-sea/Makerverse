@@ -176,12 +176,11 @@ public class LivesController(
         if (live.Status is LiveStatus.Created or LiveStatus.Starting)
             return BadRequest("Live is not started yet.");
 
-        if (await persistentService.GetSegmentAsync(id, num, Response.Body) is {} error)
+        MemoryStream stream = new();
+        if (await persistentService.GetSegmentAsync(id, num, stream) is {} error)
             return error.ToActionResult();
 
-        Response.ContentType = "video/MP2T";
-        Response.Headers.Append("Accept-Ranges", "bytes");
-        return Empty;
+        return File(stream, "video/MP2T");
     }
 
     #endregion

@@ -52,4 +52,31 @@ public class LivestreamPersistentService(
             }
         }
     }
+
+    public async Task<Error?> DeleteSegmentsAsync(string liveId, CancellationToken ct = default) {
+        List<string>? segmentKeys;
+        try {
+            segmentKeys = await ListSegmentsAsync(liveId, ct).ToListAsync(ct);
+        }
+        catch (MinioException e) {
+            logger.LogWarning(e, "MinIO error while listing segments for live {id}: {message}", liveId, e.Message);
+            return Error.Failure("Failed to list segments for deletion.");
+        }
+        
+        if (segmentKeys.Count == 0)
+            return null;
+
+        RemoveObjectsArgs args = new RemoveObjectsArgs()
+            .WithBucket(BucketName)
+            .WithObjects(segmentKeys);
+        try {
+            await minio.RemoveObjectsAsync(args, ct);
+        }
+        catch (Exception e) {
+            logger.LogWarning(e, "MinIO error while deleting segments for live {id}: {message}", liveId, e.Message);
+            return Error.Failure("Failed to delete some or all segments.");
+        }
+        await minio.RemoveObjectsAsync(args, ct);
+        return null;
+    }
 }
