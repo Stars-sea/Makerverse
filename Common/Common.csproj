@@ -7,10 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Aspire.Keycloak.Authentication" Version="13.1.1-preview.1.26105.8" />
+      <PackageReference Include="Aspire.Keycloak.Authentication" Version="13.1.2-preview.1.26125.13" />
       <PackageReference Include="ErrorOr" Version="2.0.1" />
       <PackageReference Include="Polly" Version="8.6.5" />
-      <PackageReference Include="WolverineFx.RabbitMQ" Version="5.16.0" />
+      <PackageReference Include="WolverineFx.RabbitMQ" Version="5.16.4" />
     </ItemGroup>
 
     <ItemGroup>

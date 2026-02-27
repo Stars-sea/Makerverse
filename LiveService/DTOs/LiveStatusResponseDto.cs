@@ -5,6 +5,7 @@ namespace LiveService.DTOs;
 
 public record LiveStatusResponseDto(
     string UploadUrl,
+    string WatchUrl,
     string Passphrase
 ) {
     public static LiveStatusResponseDto FromResp(StreamInfoResponse response) {
@@ -16,12 +17,13 @@ public record LiveStatusResponseDto(
         }
         UriBuilder builder = new() {
             Host   = response.Host,
-            Port   = (int)response.Port,
+            Port   = (int)response.SrtPort,
             Query  = query.ToString(),
             Scheme = "srt"
         };
         return new LiveStatusResponseDto(
             builder.Uri.ToString(),
+            response.RtmpUrl,
             response.Passphrase
         );
     }

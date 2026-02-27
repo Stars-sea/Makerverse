@@ -13,7 +13,7 @@ public class LivestreamCallbackService(
     ILogger<LivestreamCallbackService> logger
 ) : LivestreamCallback.LivestreamCallbackBase {
 
-    public override async Task<NotifyResponse> NotifyLivestreamConnected(NotifyConnectedRequest request, ServerCallContext context) {
+    public override async Task<NotifyResponse> NotifyStreamStarted(NotifyStartedRequest request, ServerCallContext context) {
         if (await db.Lives.FindAsync(request.LiveId) is not {} live)
             return new NotifyResponse();
 
@@ -33,7 +33,7 @@ public class LivestreamCallbackService(
         return new NotifyResponse();
     }
 
-    public override async Task<NotifyResponse> NotifyLivestreamTerminate(NotifyTerminateRequest request, ServerCallContext context) {
+    public override async Task<NotifyResponse> NotifyStreamStopped(NotifyStoppedRequest request, ServerCallContext context) {
         if (await db.Lives.FindAsync(request.LiveId) is not {} live)
             return new NotifyResponse();
 

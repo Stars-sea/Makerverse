@@ -42,7 +42,7 @@ var minio = builder.AddMinioContainer("minio", port: 9000)
     .WithDataVolume("minio-data");
 
 var livestreamService = builder.AddLivestreamService("livestream-svc", srtPorts: 40000..40100)
-    .WithEnvironment("SRT_HOST", "live.makerverse.local")
+    .WithEnvironment("HOST", "live.makerverse.local")
     .WithReference(redis)
     .WithReference(minio)
     .WaitFor(redis)
