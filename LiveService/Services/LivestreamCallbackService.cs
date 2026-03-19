@@ -13,7 +13,7 @@ public class LivestreamCallbackService(
     ILogger<LivestreamCallbackService> logger
 ) : LivestreamCallback.LivestreamCallbackBase {
 
-    public override async Task<NotifyResponse> NotifyStreamStarted(NotifyStartedRequest request, ServerCallContext context) {
+    public override async Task<NotifyResponse> NotifyStreamStarted(NotifyStreamStartedRequest request, ServerCallContext context) {
         if (await db.Lives.FindAsync(request.LiveId) is not {} live)
             return new NotifyResponse();
 
@@ -33,7 +33,7 @@ public class LivestreamCallbackService(
         return new NotifyResponse();
     }
 
-    public override async Task<NotifyResponse> NotifyStreamStopped(NotifyStoppedRequest request, ServerCallContext context) {
+    public override async Task<NotifyResponse> NotifyStreamStopped(NotifyStreamStoppedRequest request, ServerCallContext context) {
         if (await db.Lives.FindAsync(request.LiveId) is not {} live)
             return new NotifyResponse();
 
@@ -51,5 +51,18 @@ public class LivestreamCallbackService(
         await bus.PublishAsync(new LiveTerminate(live.Id, isValidTransition, request.ErrorMessage));
 
         return new NotifyResponse();
+    }
+
+    public override Task<NotifyResponse> NotifyStreamRestarting(NotifyStreamRestartingRequest request, ServerCallContext context) {
+        logger.LogInformation("Received livestream restarting notification for live {LiveId}", request.LiveId);
+        return Task.FromResult(new NotifyResponse());
+    }
+
+    public override Task<NotifyResponse> NotifyIngestWorkerStarted(NotifyIngestWorkerStartedRequest request, ServerCallContext context) {
+        return Task.FromResult(new NotifyResponse());
+    }
+
+    public override Task<NotifyResponse> NotifyIngestWorkerStopped(NotifyIngestWorkerStoppedRequest request, ServerCallContext context) {
+        return Task.FromResult(new NotifyResponse());
     }
 }

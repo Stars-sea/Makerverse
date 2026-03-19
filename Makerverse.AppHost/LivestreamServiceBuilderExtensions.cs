@@ -15,19 +15,28 @@ public static class LivestreamServiceBuilderExtensions {
         this IDistributedApplicationBuilder builder,
         string name,
         string dockerfilePath = "../livestream-rs",
-        int port = 50051,
-        string minioBucket = "videos",
+        int grpcPort = 50051,
+        int rtmpPort = 1936,
         Range? srtPorts = null,
-        uint segmentDuration = 10
+        uint duration = 10,
+        int publishPort = 1935,
+        string publishAppname = "lives",
+        string minioBucket = "videos"
     ) {
         srtPorts ??= 4000..4100;
 
         var container = builder.AddDockerfile(name, dockerfilePath)
-            .WithEnvironment("GRPC_PORT", port.ToString())
+            .WithOtlpExporter(OtlpProtocol.Grpc)
+            .WithEnvironment("INGEST_GRPCPORT", grpcPort.ToString())
+            .WithEnvironment("INGEST_RTMPPORT", rtmpPort.ToString())
+            .WithEnvironment("INGEST_SRTPORTS", RangeToString(srtPorts.Value))
+            .WithEnvironment("INGEST_DURATION", duration.ToString())
+            .WithEnvironment("PUBLISH_PORT", publishPort.ToString())
+            .WithEnvironment("PUBLISH_APPNAME", publishAppname)
             .WithEnvironment("MINIO_BUCKET", minioBucket)
-            .WithEnvironment("SRT_PORTS", RangeToString(srtPorts.Value))
-            .WithEnvironment("SEGMENT_DURATION", segmentDuration.ToString())
-            .WithEndpoint(port: port, targetPort: port, scheme: "http", name: "grpc");
+            .WithEndpoint(port: grpcPort, targetPort: grpcPort, scheme: "http", name: "grpc")
+            .WithEndpoint(port: rtmpPort, targetPort: rtmpPort, scheme: "rtmp", name: "rtmp-ingest")
+            .WithEndpoint(port: publishPort, targetPort: publishPort, scheme: "rtmp", name: "rtmp-publish");
 
         (int offset, int length) = srtPorts.Value.GetOffsetAndLength(int.MaxValue);
         foreach (int srtPort in Enumerable.Range(offset, length)) {

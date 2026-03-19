@@ -155,14 +155,16 @@ public class LivesController(
     #endregion
 
     #region Live viewing (for viewers)
-
+    
+    // TODO:
+    // - Generate the HLS manifest file for the live stream (LiveTerminateHandler)
+    // - Preview live stream (generate preview image from the first segment or use a placeholder image)
     [HttpGet("{id}/segments")]
     public async Task<ActionResult<List<string>>> ListLiveSegments(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
         if (live.Status is LiveStatus.Created or LiveStatus.Starting)
             return BadRequest("Live is not started yet.");
 
-        // TODO: we can add pagination here if the number of segments becomes large
         List<string> segments = [];
         await foreach (string segment in persistentService.ListSegmentsAsync(id)) {
             segments.Add(segment);

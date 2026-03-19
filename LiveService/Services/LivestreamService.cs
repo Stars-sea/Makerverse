@@ -36,10 +36,11 @@ public class LivestreamService(
 
         StreamInfoResponse? resp;
         try {
-            resp = await grpc.StartPullStreamAsync(
-                new StartPullStreamRequest {
-                    LiveId     = liveId,
-                    Passphrase = GeneratePassphrase(32)
+            resp = await grpc.StartIngestStreamAsync(
+                new StartIngestStreamRequest {
+                    LiveId        = liveId,
+                    Passphrase    = GeneratePassphrase(32),
+                    InputProtocol = InputProtocol.Rtmp
                 },
                 cancellationToken: ct
             )!;
@@ -72,10 +73,10 @@ public class LivestreamService(
             );
         }
 
-        StopPullStreamResponse? resp;
+        StopIngestStreamResponse? resp;
         try {
-            resp = await grpc.StopPullStreamAsync(
-                new StopPullStreamRequest {
+            resp = await grpc.StopIngestStreamAsync(
+                new StopIngestStreamRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct
@@ -99,8 +100,8 @@ public class LivestreamService(
         CancellationToken ct = default
     ) {
         try {
-            return await grpc.GetStreamInfoAsync(
-                new GetStreamInfoRequest {
+            return await grpc.GetIngestStreamInfoAsync(
+                new GetIngestStreamInfoRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct
@@ -116,8 +117,8 @@ public class LivestreamService(
 
     public async Task<ErrorOr<IEnumerable<string>>> GetActiveStreamAsync(CancellationToken ct = default) {
         try {
-            ListActiveStreamsResponse resp = await grpc.ListActiveStreamsAsync(
-                new ListActiveStreamsRequest(),
+            ListIngestStreamsResponse resp = await grpc.ListIngestStreamsAsync(
+                new ListIngestStreamsRequest(),
                 cancellationToken: ct
             )!;
             return resp.LiveIds;
