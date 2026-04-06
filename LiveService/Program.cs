@@ -44,7 +44,6 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.MapControllers();
-app.MapGrpcService<LivestreamCallbackService>();
 app.MapDefaultEndpoints();
 
 using (IServiceScope scope = app.Services.CreateScope()) {

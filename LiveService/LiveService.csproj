@@ -31,7 +31,6 @@
     
     <ItemGroup>
         <Protobuf Include="Protos\livestream.proto" GrpcServices="Client" />
-        <Protobuf Include="Protos\livestream_callback.proto" GrpcServices="Server" />
     </ItemGroup>
 
 </Project>

@@ -8,20 +8,22 @@ public record LiveStatusResponseDto(
     string PullUrl,
     string? Passphrase
 ) {
-    public static LiveStatusResponseDto FromResp(StreamInfoResponse response) {
+    public static LiveStatusResponseDto FromResp(StreamDescriptor response) {
+        StreamEndpoint endpoint = response.Endpoint;
+        
         UriBuilder? pushUrlBuilder;
         switch (response.InputProtocol) {
             case InputProtocol.Srt:
             {
                 StringBuilder query = new("mode=caller");
                 query.Append($"&srt_streamid={response.LiveId}");
-                if (!string.IsNullOrEmpty(response.Passphrase)) {
-                    query.Append($"&passphrase={response.Passphrase}");
+                if (endpoint.HasPassphrase) {
+                    query.Append($"&passphrase={endpoint.Passphrase}");
                     query.Append("&pbkeylen=32");
                 }
                 pushUrlBuilder = new UriBuilder {
-                    Host   = response.Host,
-                    Port   = (int)response.Port,
+                    Host   = "TODO", // TODO
+                    Port   = (int)endpoint.Port,
                     Query  = query.ToString(),
                     Scheme = "srt"
                 };
@@ -29,9 +31,9 @@ public record LiveStatusResponseDto(
             }
             case InputProtocol.Rtmp:
                 pushUrlBuilder = new UriBuilder {
-                    Host   = response.Host,
-                    Port   = (int)response.Port,
-                    Path   = $"{response.RtmpAppname}/{response.LiveId}",
+                    Host   = "TODO", // TODO
+                    Port   = (int)endpoint.Port,
+                    Path   = $"{endpoint.RtmpAppname}/{response.LiveId}",
                     Scheme = "rtmp"
                 };
                 break;
@@ -40,16 +42,16 @@ public record LiveStatusResponseDto(
         }
         
         UriBuilder pullUrlBuilder = new() {
-            Host   = response.Host,
-            Port   = (int)response.PullPort,
-            Path   = $"{response.RtmpAppname}/{response.LiveId}",
+            Host   = "TODO", // TODO
+            Port   = (int)endpoint.Port,
+            Path   = $"{endpoint.RtmpAppname}/{response.LiveId}",
             Scheme = "rtmp"
         };
 
         return new LiveStatusResponseDto(
             pushUrlBuilder.Uri.ToString(),
             pullUrlBuilder.Uri.ToString(),
-            response.HasPassphrase ? response.Passphrase : null
+            endpoint.HasPassphrase ? endpoint.Passphrase : null
         );
     }
 }

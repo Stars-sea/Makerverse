@@ -4,6 +4,7 @@ using Contracts;
 using LiveService.Data;
 using LiveService.DTOs;
 using LiveService.Models;
+using LiveService.Protos;
 using LiveService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -58,10 +59,10 @@ public class LivesController(
         var ret = await livestreamService.GetActiveStreamAsync();
         if (ret.IsError) return ret.FirstError.ToActionResult();
 
-        var onlineStreamIds = ret.Value;
+        IEnumerable<StreamDescriptor> descriptors = ret.Value;
 
         return await db.Lives.AsQueryable()
-            .Where(live => onlineStreamIds.Contains(live.Id))
+            .Where(live => descriptors.Any(d => d.LiveId == live.Id))
             .OrderByDescending(x => x.CreatedAt).ToListAsync();
     }
 
@@ -123,7 +124,7 @@ public class LivesController(
         if (dto.Status == "start") {
             var ret = await livestreamService.StartLivestreamAsync(live.Id);
             if (ret.IsError) return ret.FirstError.ToActionResult();
-            return LiveStatusResponseDto.FromResp(ret.Value);
+            return LiveStatusResponseDto.FromResp(ret.Value.Stream);
         }
 
         if (dto.Status == "stop") {
@@ -147,7 +148,7 @@ public class LivesController(
 
         var ret = await livestreamService.GetStreamInfoAsync(live.Id);
         return ret.MatchFirst(
-            resp => Ok(LiveStatusResponseDto.FromResp(resp)),
+            resp => Ok(LiveStatusResponseDto.FromResp(resp.Stream)),
             error => error.ToActionResult()
         );
     }

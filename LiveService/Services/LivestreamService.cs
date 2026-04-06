@@ -19,7 +19,7 @@ public class LivestreamService(
 
     }
 
-    public async Task<ErrorOr<StreamInfoResponse>> StartLivestreamAsync(
+    public async Task<ErrorOr<StartLivestreamResponse>> StartLivestreamAsync(
         string liveId,
         CancellationToken ct = default
     ) {
@@ -34,10 +34,10 @@ public class LivestreamService(
             );
         }
 
-        StreamInfoResponse? resp;
+        StartLivestreamResponse? resp;
         try {
-            resp = await grpc.StartIngestStreamAsync(
-                new StartIngestStreamRequest {
+            resp = await grpc.StartLivestreamAsync(
+                new StartLivestreamRequest {
                     LiveId        = liveId,
                     Passphrase    = GeneratePassphrase(32),
                     InputProtocol = InputProtocol.Rtmp
@@ -73,10 +73,10 @@ public class LivestreamService(
             );
         }
 
-        StopIngestStreamResponse? resp;
+        StopLivestreamResponse? resp;
         try {
-            resp = await grpc.StopIngestStreamAsync(
-                new StopIngestStreamRequest {
+            resp = await grpc.StopLivestreamAsync(
+                new StopLivestreamRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct
@@ -95,13 +95,13 @@ public class LivestreamService(
         return resp.IsSuccess;
     }
 
-    public async Task<ErrorOr<StreamInfoResponse>> GetStreamInfoAsync(
+    public async Task<ErrorOr<GetLivestreamInfoResponse>> GetStreamInfoAsync(
         string liveId,
         CancellationToken ct = default
     ) {
         try {
-            return await grpc.GetIngestStreamInfoAsync(
-                new GetIngestStreamInfoRequest {
+            return await grpc.GetLivestreamInfoAsync(
+                new GetLivestreamInfoRequest {
                     LiveId = liveId
                 },
                 cancellationToken: ct
@@ -115,13 +115,13 @@ public class LivestreamService(
         }
     }
 
-    public async Task<ErrorOr<IEnumerable<string>>> GetActiveStreamAsync(CancellationToken ct = default) {
+    public async Task<ErrorOr<IEnumerable<StreamDescriptor>>> GetActiveStreamAsync(CancellationToken ct = default) {
         try {
-            ListIngestStreamsResponse resp = await grpc.ListIngestStreamsAsync(
-                new ListIngestStreamsRequest(),
+            ListLivestreamsResponse resp = await grpc.ListLivestreamsAsync(
+                new ListLivestreamsRequest(),
                 cancellationToken: ct
             )!;
-            return resp.LiveIds;
+            return resp.Streams;
         }
         catch (Exception e) {
             return Error.Failure(
