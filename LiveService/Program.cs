@@ -27,7 +27,7 @@ await builder.UseWolverineWithRabbitMqAsync(options => {
 
 builder.Services.AddGrpc();
 builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
-    string? grpcUri = builder.Configuration["services:livestream-svc:grpc:0"];
+    string? grpcUri = builder.Configuration["LIVESTREAM_SVC_GRPC"];
     if (string.IsNullOrEmpty(grpcUri))
         throw new InvalidOperationException("Livestream service gRPC endpoint is not configured.");
 
@@ -35,6 +35,8 @@ builder.Services.AddGrpcClient<Livestream.LivestreamClient>(options => {
 });
 builder.Services.AddScoped<LivestreamService>();
 builder.Services.AddScoped<LivestreamPersistentService>();
+builder.Services.AddHostedService<LivestreamLifecycleWatcher>();
+builder.Services.AddSingleton<LivestreamLifecycleWatcherQueue>();
 
 var app = builder.Build();
 

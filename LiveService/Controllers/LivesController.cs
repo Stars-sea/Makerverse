@@ -19,6 +19,7 @@ public class LivesController(
     LiveDbContext db,
     LivestreamService livestreamService,
     LivestreamPersistentService persistentService,
+    LivestreamLifecycleWatcherQueue queue,
     IMessageBus bus
 ) : ControllerBase {
 
@@ -122,7 +123,9 @@ public class LivesController(
         if (userId is null || live.StreamerId != userId) return Forbid();
 
         if (dto.Status == "start") {
-            var ret = await livestreamService.StartLivestreamAsync(live.Id);
+            var ret = await livestreamService.StartLivestreamAsync(live.Id, InputProtocol.Rtmp);
+            await queue.QueueWatcherAsync(live.Id);
+
             if (ret.IsError) return ret.FirstError.ToActionResult();
             return LiveStatusResponseDto.FromResp(ret.Value.Stream);
         }
@@ -156,7 +159,7 @@ public class LivesController(
     #endregion
 
     #region Live viewing (for viewers)
-    
+
     // TODO:
     // - Generate the HLS manifest file for the live stream (LiveTerminateHandler)
     // - Preview live stream (generate preview image from the first segment or use a placeholder image)

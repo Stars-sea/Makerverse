@@ -11,7 +11,7 @@ var postgres = builder.AddPostgres("postgres", port: 5432)
     .WithBindMount("./data/postgres", "/docker-entrypoint-initdb.d");
 
 var keycloakDb = postgres.AddDatabase("keycloak-db");
-var keycloak = builder.AddCustomKeycloak("keycloak")
+var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
     .WaitFor(keycloakDb)
@@ -61,10 +61,6 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WaitFor(redis)
     .WaitFor(minio)
     .WaitFor(livestreamService);
-
-livestreamService
-    .WithEnvironment("INGEST_CALLBACK", liveService.GetEndpoint("Grpc"))
-    .WithReference(liveService);
 
 var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")

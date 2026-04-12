@@ -1,4 +1,6 @@
-﻿using ErrorOr;
+﻿using System.Runtime.CompilerServices;
+using ErrorOr;
+using Grpc.Core;
 using LiveService.Data;
 using LiveService.Models;
 using LiveService.Protos;
@@ -21,6 +23,7 @@ public class LivestreamService(
 
     public async Task<ErrorOr<StartLivestreamResponse>> StartLivestreamAsync(
         string liveId,
+        InputProtocol protocol,
         CancellationToken ct = default
     ) {
         if (await db.Lives.FindAsync([liveId], ct) is not {} live) {
@@ -40,7 +43,7 @@ public class LivestreamService(
                 new StartLivestreamRequest {
                     LiveId        = liveId,
                     Passphrase    = GeneratePassphrase(32),
-                    InputProtocol = InputProtocol.Rtmp
+                    InputProtocol = protocol
                 },
                 cancellationToken: ct
             )!;
@@ -128,6 +131,27 @@ public class LivestreamService(
                 "ListActiveStreamsFailed",
                 $"Failed to list active streams: {e.Message}"
             );
+        }
+    }
+
+    /// <summary>
+    /// <para>Watches the livestream session status for the specified live and yields updates as they come in.</para>
+    /// <para>For use by <c>LivestreamLifecycleWatcher</c> only.</para>
+    /// </summary>
+    public async IAsyncEnumerable<SessionStatus> WatchSessionStatusAsync(
+        string liveId,
+        [EnumeratorCancellation] CancellationToken ct = default
+    ) {
+        var call = grpc.WatchLivestream(
+            new WatchLivestreamRequest {
+                LiveId = liveId
+            },
+            cancellationToken: ct
+        );
+
+        var stream = call.ResponseStream.ReadAllAsync(ct);
+        await foreach (WatchLivestreamResponse response in stream) {
+            yield return response.Stream;
         }
     }
 }
