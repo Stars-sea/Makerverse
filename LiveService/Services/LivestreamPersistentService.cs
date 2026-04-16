@@ -1,5 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using ErrorOr;
+using LiveService.Options;
+using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel;
 using Minio.DataModel.Args;
@@ -11,9 +13,10 @@ namespace LiveService.Services;
 
 public class LivestreamPersistentService(
     IMinioClient minio,
-    ILogger<LivestreamPersistentService> logger
+    ILogger<LivestreamPersistentService> logger,
+    IOptions<LivestreamOptions> options
 ) {
-    private const string BucketName = "videos";
+    private string BucketName => options.Value.BucketName;
 
     private static string ObjectName(string id, int num) => $"{id}/segment_{num:0000}.mp4";
 
@@ -28,20 +31,21 @@ public class LivestreamPersistentService(
         }
     }
 
-    public async Task<Error?> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream, CancellationToken ct = default) {
+    public async Task<ErrorOr<long>> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream, CancellationToken ct = default) {
+        string objectName = ObjectName(liveId, segmentNum);
+
         try {
             GetObjectArgs args = new GetObjectArgs()
                 .WithBucket(BucketName)
-                .WithObject(ObjectName(liveId, segmentNum))
+                .WithObject(objectName)
                 .WithCallbackStream(CallbackStream);
-            await minio.GetObjectAsync(args, ct);
+            ObjectStat stat = await minio.GetObjectAsync(args, ct);
+            return stat.Size;
         }
         catch (MinioException e) {
             logger.LogWarning(e, "MinIO error while getting segment {id}: {message}", liveId, e.Message);
             return Error.NotFound("Segment not found.");
         }
-
-        return null;
 
         async void CallbackStream(Stream stream) {
             try {
@@ -62,7 +66,7 @@ public class LivestreamPersistentService(
             logger.LogWarning(e, "MinIO error while listing segments for live {id}: {message}", liveId, e.Message);
             return Error.Failure("Failed to list segments for deletion.");
         }
-        
+
         if (segmentKeys.Count == 0)
             return null;
 

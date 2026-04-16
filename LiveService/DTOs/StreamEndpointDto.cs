@@ -1,6 +1,6 @@
 ﻿namespace LiveService.DTOs;
 
-public record LiveStatusResponseDto(
+public record StreamEndpointDto(
     string PushUrl,
     string PullUrl,
     string? Passphrase

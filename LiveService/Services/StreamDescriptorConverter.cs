@@ -11,7 +11,7 @@ public class StreamDescriptorConverter(
 ) {
     private string Host => options.Value.Hostname;
 
-    public LiveStatusResponseDto Convert(StreamDescriptor descriptor) {
+    public StreamEndpointDto Convert(StreamDescriptor descriptor) {
         string         liveId   = descriptor.LiveId;
         StreamEndpoint endpoint = descriptor.Endpoint;
 
@@ -23,7 +23,7 @@ public class StreamDescriptorConverter(
 
         UriBuilder pullUrlBuilder = BuildPullUri(liveId, endpoint);
 
-        return new LiveStatusResponseDto(
+        return new StreamEndpointDto(
             pushUrlBuilder.Uri.ToString(),
             pullUrlBuilder.Uri.ToString(),
             endpoint.HasPassphrase ? endpoint.Passphrase : null

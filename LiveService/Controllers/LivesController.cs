@@ -117,7 +117,7 @@ public class LivesController(
 
     [Authorize]
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<LiveStatusResponseDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
+    public async Task<ActionResult<StreamEndpointDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -145,7 +145,7 @@ public class LivesController(
 
     [Authorize]
     [HttpGet("{id}/status")]
-    public async Task<ActionResult<LiveStatusResponseDto>> GetLiveStatus(string id) {
+    public async Task<ActionResult<StreamEndpointDto>> GetLiveEndpoint(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -179,16 +179,27 @@ public class LivesController(
     }
 
     [HttpGet("{id}/segments/{num:int}")]
-    public async Task<IActionResult> GetLiveSegment(string id, int num) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
-        if (live.Status is LiveStatus.Created or LiveStatus.Starting)
-            return BadRequest("Live is not started yet.");
+    public async Task GetLiveSegment(string id, int num) {
+        if (await db.Lives.FindAsync(id) is not {} live) {
+            Response.StatusCode = 404;
+            return;
+        }
+        if (live.Status is LiveStatus.Created or LiveStatus.Starting) {
+            Response.StatusCode = 400;
+            await Response.WriteAsync("Live is not started yet.");
+            return;
+        }
 
-        MemoryStream stream = new();
-        if (await persistentService.GetSegmentAsync(id, num, stream) is {} error)
-            return error.ToActionResult();
+        var ret = await persistentService.GetSegmentAsync(id, num, Response.Body);
+        if (ret.IsError) {
+            Response.StatusCode = 404;
+            await Response.WriteAsJsonAsync(ret.Errors);
+            return;
+        }
 
-        return File(stream, "video/MP2T");
+        Response.ContentType          = "video/MP2T";
+        Response.ContentLength        = ret.Value;
+        Response.Headers.AcceptRanges = "bytes";
     }
 
     #endregion

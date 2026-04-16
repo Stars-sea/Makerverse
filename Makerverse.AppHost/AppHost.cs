@@ -49,6 +49,7 @@ var livestreamService = builder.AddLivestreamService("livestream-svc", grpcPort:
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithEnvironment("LivestreamOptions__Hostname", "live.makerverse.local")
+    .WithEnvironment("LivestreamOptions__BucketName", "videos")
     .WithReference(keycloak)
     .WithReference(liveDb)
     .WithReference(rabbitmq)
