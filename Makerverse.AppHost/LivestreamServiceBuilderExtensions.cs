@@ -14,14 +14,14 @@ public static class LivestreamServiceBuilderExtensions {
     public static IResourceBuilder<ContainerResource> AddLivestreamService(
         this IDistributedApplicationBuilder builder,
         string name,
+        IResourceBuilder<ParameterResource> rtmpAppname,
+        IResourceBuilder<ParameterResource> bucketName,
         string dockerfilePath = "../livestream-rs",
         int grpcPort = 50051,
         int rtmpPort = 1936,
         Range? srtPorts = null,
         uint duration = 10,
-        int publishPort = 1935,
-        string publishAppname = "lives",
-        string minioBucket = "videos"
+        int publishPort = 1935
     ) {
         srtPorts ??= 4000..4100;
 
@@ -32,8 +32,8 @@ public static class LivestreamServiceBuilderExtensions {
             .WithEnvironment("SRT_PORTS", RangeToString(srtPorts.Value))
             .WithEnvironment("PERSISTENCE_DURATION", duration.ToString())
             .WithEnvironment("PUBLISH_PORT", publishPort.ToString())
-            .WithEnvironment("RTMP_APPNAME", publishAppname)
-            .WithEnvironment("MINIO_BUCKET", minioBucket)
+            .WithEnvironment("RTMP_APPNAME", rtmpAppname)
+            .WithEnvironment("MINIO_BUCKET", bucketName)
             .WithEndpoint(port: grpcPort, targetPort: grpcPort, scheme: "http", name: "grpc")
             .WithEndpoint(port: rtmpPort, targetPort: rtmpPort, scheme: "rtmp", name: "rtmp-ingest")
             .WithEndpoint(port: publishPort, targetPort: publishPort, scheme: "rtmp", name: "rtmp-publish");

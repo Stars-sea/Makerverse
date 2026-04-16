@@ -24,7 +24,7 @@ await builder.UseWolverineWithRabbitMqAsync(options => {
 });
 
 builder.Services.AddTypesenseClient(config => {
-    string? typesenseUri = builder.Configuration["services:typesense:typesense:0"];
+    string? typesenseUri = builder.Configuration["TYPESENSE_TYPESENSE"];
     if (string.IsNullOrEmpty(typesenseUri))
         throw new InvalidOperationException("Typesense service endpoint is not configured.");
 

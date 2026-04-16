@@ -3,6 +3,11 @@ using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
+var typesenseApiKey   = builder.AddParameter("typesense-api-key", secret: true);
+var livestreamHost    = builder.AddParameter("livestream-host", value: "live.makerverse.local");
+var livestreamBucket  = builder.AddParameter("livestream-bucket", value: "videos");
+var livestreamAppname = builder.AddParameter("livestream-appname", value: "lives");
+
 var compose = builder.AddDockerComposeEnvironment("production")
     .WithDashboard(dashboard => dashboard.WithHostPort(8080));
 
@@ -17,8 +22,6 @@ var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WaitFor(keycloakDb)
     .WithEnvironment("VIRTUAL_HOST", "id.makerverse.local")
     .WithEnvironment("VIRTUAL_PORT", "8080");
-
-var typesenseApiKey = builder.AddParameter("typesense-api-key", secret: true);
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
@@ -38,18 +41,24 @@ var redis = builder.AddRedis("redis", port: 6379)
     .WithDataVolume("redis-data");
 #pragma warning restore ASPIRECERTIFICATES001
 
-var minio = builder.AddMinioContainer("minio", port: 9000)
+var minio = builder.AddMinioContainer("minio")
     .WithDataVolume("minio-data");
 
-var livestreamService = builder.AddLivestreamService("livestream-svc", grpcPort: 50050, srtPorts: 40000..40100)
+var livestreamService = builder.AddLivestreamService(
+        "livestream-svc",
+        rtmpAppname: livestreamAppname,
+        bucketName: livestreamBucket,
+        grpcPort: 50050,
+        srtPorts: 40000..40100
+    )
     .WithEnvironment("RUST_LOG", "info")
     .WithReference(minio)
     .WaitFor(minio);
 
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
-    .WithEnvironment("LivestreamOptions__Hostname", "live.makerverse.local")
-    .WithEnvironment("LivestreamOptions__BucketName", "videos")
+    .WithEnvironment("LivestreamOptions__Hostname", livestreamHost)
+    .WithEnvironment("LivestreamOptions__BucketName", livestreamBucket)
     .WithReference(keycloak)
     .WithReference(liveDb)
     .WithReference(rabbitmq)
