@@ -4,9 +4,12 @@ using Microsoft.Extensions.Hosting;
 var builder = DistributedApplication.CreateBuilder(args);
 
 var typesenseApiKey   = builder.AddParameter("typesense-api-key", secret: true);
-var livestreamHost    = builder.AddParameter("livestream-host", value: "live.makerverse.local");
 var livestreamBucket  = builder.AddParameter("livestream-bucket", value: "videos");
 var livestreamAppname = builder.AddParameter("livestream-appname", value: "lives");
+
+var hostId   = builder.AddParameter("host-id", value: "id.makerverse.local");
+var hostApi  = builder.AddParameter("host-api", value: "api.makerverse.local");
+var hostLive = builder.AddParameter("host-live", value: "live.makerverse.local");
 
 var compose = builder.AddDockerComposeEnvironment("production")
     .WithDashboard(dashboard => dashboard.WithHostPort(8080));
@@ -20,7 +23,7 @@ var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
     .WaitFor(keycloakDb)
-    .WithEnvironment("VIRTUAL_HOST", "id.makerverse.local")
+    .WithEnvironment("VIRTUAL_HOST", hostId)
     .WithEnvironment("VIRTUAL_PORT", "8080");
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
@@ -57,7 +60,7 @@ var livestreamService = builder.AddLivestreamService(
 
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
-    .WithEnvironment("LivestreamOptions__Hostname", livestreamHost)
+    .WithEnvironment("LivestreamOptions__Hostname", hostLive)
     .WithEnvironment("LivestreamOptions__BucketName", livestreamBucket)
     .WithReference(keycloak)
     .WithReference(liveDb)
@@ -98,7 +101,7 @@ var yarp = builder.AddYarp("gateway")
         yarpBuilder.AddRoute("/search/{**catch-all}", searchService);
     })
     .WithHostPort(8001)
-    .WithEnvironment("VIRTUAL_HOST", "api.makerverse.local")
+    .WithEnvironment("VIRTUAL_HOST", hostApi)
     .WithEnvironment("VIRTUAL_PORT", "5000");
 
 if (!builder.Environment.IsDevelopment()) {
