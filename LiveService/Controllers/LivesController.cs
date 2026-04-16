@@ -20,7 +20,8 @@ public class LivesController(
     LivestreamService livestreamService,
     LivestreamPersistentService persistentService,
     LivestreamLifecycleWatcherQueue queue,
-    IMessageBus bus
+    IMessageBus bus,
+    StreamDescriptorConverter descriptorConverter
 ) : ControllerBase {
 
     #region Live Management (CRUD)
@@ -123,11 +124,12 @@ public class LivesController(
         if (userId is null || live.StreamerId != userId) return Forbid();
 
         if (dto.Status == "start") {
+            // TODO: Due to instability in the current SRT protocol implementation, it is temporarily hardcoded to RTMP.
             var ret = await livestreamService.StartLivestreamAsync(live.Id, InputProtocol.Rtmp);
             await queue.QueueWatcherAsync(live.Id);
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
-            return LiveStatusResponseDto.FromResp(ret.Value.Stream);
+            return descriptorConverter.Convert(ret.Value.Stream);
         }
 
         if (dto.Status == "stop") {
@@ -151,7 +153,7 @@ public class LivesController(
 
         var ret = await livestreamService.GetStreamInfoAsync(live.Id);
         return ret.MatchFirst(
-            resp => Ok(LiveStatusResponseDto.FromResp(resp.Stream)),
+            resp => Ok(descriptorConverter.Convert(resp.Stream)),
             error => error.ToActionResult()
         );
     }

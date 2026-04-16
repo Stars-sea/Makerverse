@@ -1,5 +1,6 @@
 using Common;
 using LiveService.Data;
+using LiveService.Options;
 using LiveService.Protos;
 using LiveService.Services;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,9 @@ builder.Services.AddScoped<LivestreamService>();
 builder.Services.AddScoped<LivestreamPersistentService>();
 builder.Services.AddHostedService<LivestreamLifecycleWatcher>();
 builder.Services.AddSingleton<LivestreamLifecycleWatcherQueue>();
+
+builder.Services.AddSingleton<StreamDescriptorConverter>();
+builder.Services.Configure<LivestreamOptions>(builder.Configuration.GetSection("LivestreamOptions"));
 
 var app = builder.Build();
 
