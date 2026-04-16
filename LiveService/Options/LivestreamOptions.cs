@@ -1,6 +1,7 @@
 ﻿namespace LiveService.Options;
 
-public record LivestreamOptions(
-    string Hostname,
-    string BucketName
-);
+public class LivestreamOptions {
+    public string Hostname { get; init; } = null!;
+
+    public string BucketName { get; init; } = null!;
+}

@@ -18,7 +18,7 @@ public class LivestreamPersistentService(
 ) {
     private string BucketName => options.Value.BucketName;
 
-    private static string ObjectName(string id, int num) => $"{id}/segment_{num:0000}.mp4";
+    private static string ObjectName(string id, int num) => $"{id}/segment_{num:0000}.ts";
 
     public async IAsyncEnumerable<string> ListSegmentsAsync(string liveId, [EnumeratorCancellation] CancellationToken ct = default) {
         ListObjectsArgs args = new ListObjectsArgs()
@@ -31,7 +31,20 @@ public class LivestreamPersistentService(
         }
     }
 
-    public async Task<ErrorOr<long>> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream, CancellationToken ct = default) {
+    public async Task<ErrorOr<ObjectStat>> GetSegmentStatAsync(string liveId, int segmentNum, CancellationToken ct = default) {
+        try {
+            StatObjectArgs args = new StatObjectArgs()
+                .WithBucket(BucketName)
+                .WithObject(ObjectName(liveId, segmentNum));
+            return await minio.StatObjectAsync(args, ct);
+        }
+        catch (MinioException e) {
+            logger.LogWarning(e, "MinIO error while getting stat of segment {id}: {message}", liveId, e.Message);
+            return Error.NotFound("Segment not found.");
+        }
+    }
+
+    public async Task<ErrorOr<ObjectStat>> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream, CancellationToken ct = default) {
         string objectName = ObjectName(liveId, segmentNum);
 
         try {
@@ -39,20 +52,19 @@ public class LivestreamPersistentService(
                 .WithBucket(BucketName)
                 .WithObject(objectName)
                 .WithCallbackStream(CallbackStream);
-            ObjectStat stat = await minio.GetObjectAsync(args, ct);
-            return stat.Size;
+            return await minio.GetObjectAsync(args, ct);
         }
         catch (MinioException e) {
             logger.LogWarning(e, "MinIO error while getting segment {id}: {message}", liveId, e.Message);
             return Error.NotFound("Segment not found.");
         }
 
-        async void CallbackStream(Stream stream) {
+        async Task CallbackStream(Stream stream, CancellationToken token) {
             try {
-                await stream.CopyToAsync(outputStream, ct);
+                await stream.CopyToAsync(outputStream, token);
             }
             catch (Exception e) {
-                logger.LogError(e, "Error while copying segment {id} to output stream", liveId);
+                logger.LogError(e, "Error while copying object {objectName} to output stream", objectName);
             }
         }
     }

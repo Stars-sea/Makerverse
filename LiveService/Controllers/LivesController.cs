@@ -9,6 +9,7 @@ using LiveService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Minio.DataModel;
 using Wolverine;
 
 namespace LiveService.Controllers;
@@ -190,16 +191,27 @@ public class LivesController(
             return;
         }
 
+        var statRet = await persistentService.GetSegmentStatAsync(id, num);
+        if (statRet.IsError) {
+            Response.StatusCode = 404;
+            await Response.WriteAsJsonAsync(statRet.Errors);
+            return;
+        }
+        
+        ObjectStat stat = statRet.Value;
+
+        Response.ContentType          = "video/MP2T";
+        Response.ContentLength        = stat.Size;
+        Response.Headers.AcceptRanges = "bytes";
+        Response.Headers.ETag         = stat.ETag;
+        Response.Headers.LastModified = stat.LastModified.ToString("R");
+        Response.Headers.CacheControl = "public, max-age=600"; // Cache for 10 mins
+
         var ret = await persistentService.GetSegmentAsync(id, num, Response.Body);
         if (ret.IsError) {
             Response.StatusCode = 404;
             await Response.WriteAsJsonAsync(ret.Errors);
-            return;
         }
-
-        Response.ContentType          = "video/MP2T";
-        Response.ContentLength        = ret.Value;
-        Response.Headers.AcceptRanges = "bytes";
     }
 
     #endregion
