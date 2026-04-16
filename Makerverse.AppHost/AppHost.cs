@@ -42,7 +42,6 @@ var minio = builder.AddMinioContainer("minio", port: 9000)
     .WithDataVolume("minio-data");
 
 var livestreamService = builder.AddLivestreamService("livestream-svc", grpcPort: 50050, srtPorts: 40000..40100)
-    .WithEnvironment("INGEST_HOST", "live.makerverse.local")
     .WithEnvironment("RUST_LOG", "info")
     .WithReference(minio)
     .WaitFor(minio);
@@ -60,7 +59,7 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WaitFor(rabbitmq)
     .WaitFor(redis)
     .WaitFor(minio)
-    .WaitFor(livestreamService);
+    .WaitFor(livestreamService, WaitBehavior.StopOnResourceUnavailable);
 
 var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
