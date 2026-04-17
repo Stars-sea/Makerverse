@@ -1,15 +1,25 @@
 using Makerverse.AppHost;
 using Microsoft.Extensions.Hosting;
 
+#pragma warning disable ASPIRECOMPUTE003
+#pragma warning disable ASPIREPIPELINES003
+
 var builder = DistributedApplication.CreateBuilder(args);
 
-var typesenseApiKey   = builder.AddParameter("typesense-api-key", secret: true);
-var livestreamBucket  = builder.AddParameter("livestream-bucket", value: "videos");
-var livestreamAppname = builder.AddParameter("livestream-appname", value: "lives");
+var typesenseApiKey   = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "typesense-api-key");
+var livestreamBucket  = builder.AddParameter("livestream-bucket", value: "videos", publishValueAsDefault: true);
+var livestreamAppname = builder.AddParameter("livestream-appname", value: "lives", publishValueAsDefault: true);
 
 var hostId   = builder.AddParameter("host-id", value: "id.makerverse.local");
 var hostApi  = builder.AddParameter("host-api", value: "api.makerverse.local");
 var hostLive = builder.AddParameter("host-live", value: "live.makerverse.local");
+
+var registryEndpoint = builder.AddParameter("registry-endpoint", secret: true);
+
+var registry = builder.AddContainerRegistry(
+    "container-registry",
+    registryEndpoint
+);
 
 var compose = builder.AddDockerComposeEnvironment("production")
     .WithDashboard(dashboard => dashboard.WithHostPort(8080));
@@ -20,6 +30,10 @@ var postgres = builder.AddPostgres("postgres", port: 5432)
 
 var keycloakDb = postgres.AddDatabase("keycloak-db");
 var keycloak = builder.AddKeycloak("keycloak", port: 6001)
+    .WithEnvironment("KC_HTTP_ENABLED", "true")
+    .WithEnvironment("KC_HOSTNAME", ReferenceExpression.Create($"https://{hostId}"))
+    .WithEnvironment("KC_HOSTNAME_STRICT", "true")
+    .WithEnvironment("KC_PROXY_HEADERS", "xforwarded")
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
     .WaitFor(keycloakDb)
@@ -54,12 +68,16 @@ var livestreamService = builder.AddLivestreamService(
         grpcPort: 50050,
         srtPorts: 40000..40100
     )
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("latest")
     .WithEnvironment("RUST_LOG", "info")
     .WithReference(minio)
     .WaitFor(minio);
 
 var liveDb = postgres.AddDatabase("live-db");
 var liveService = builder.AddProject<Projects.LiveService>("live-svc")
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("latest")
     .WithEnvironment("LivestreamOptions__Hostname", hostLive)
     .WithEnvironment("LivestreamOptions__BucketName", livestreamBucket)
     .WithReference(keycloak)
@@ -77,6 +95,8 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
 
 var activityDb = postgres.AddDatabase("activity-db");
 var activityService = builder.AddProject<Projects.ActivityService>("activity-svc")
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("latest")
     .WithReference(keycloak)
     .WithReference(activityDb)
     .WithReference(rabbitmq)
@@ -87,6 +107,8 @@ var activityService = builder.AddProject<Projects.ActivityService>("activity-svc
     .WaitFor(redis);
 
 var searchService = builder.AddProject<Projects.SearchService>("search-svc")
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("latest")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
     .WithReference(typesense.GetEndpoint("typesense"))
     .WithReference(rabbitmq)
