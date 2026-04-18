@@ -11,7 +11,7 @@ public class StreamDescriptorConverter(
 ) {
     private string Host => options.Value.Hostname;
 
-    public LivestreamEndpointDto ConvertLivestreamEndpoint(StreamDescriptor descriptor) {
+    public string BuildPushUri(StreamDescriptor descriptor) {
         string         liveId   = descriptor.LiveId;
         StreamEndpoint endpoint = descriptor.Endpoint;
 
@@ -21,13 +21,18 @@ public class StreamDescriptorConverter(
             _                  => throw new ArgumentException($"Unsupported input protocol: {descriptor.InputProtocol}")
         };
 
-        UriBuilder pullUrlBuilder = BuildPullUri(liveId, endpoint);
+        return pushUrlBuilder.Uri.ToString();
+    }
 
-        return new LivestreamEndpointDto(
-            pushUrlBuilder.Uri.ToString(),
-            pullUrlBuilder.Uri.ToString(),
-            endpoint.HasPassphrase ? endpoint.Passphrase : null
-        );
+    public string BuildPullUri(string liveId, StreamEndpoint endpoint) {
+        UriBuilder pullUrlBuilder = new() {
+            Host   = Host,
+            Port   = (int)endpoint.RtmpPort,
+            Path   = $"{endpoint.RtmpAppname}/{liveId}",
+            Scheme = "rtmp"
+        };
+        
+        return pullUrlBuilder.Uri.ToString();
     }
 
     private UriBuilder BuildSrtUri(string liveId, StreamEndpoint endpoint) {
@@ -49,15 +54,6 @@ public class StreamDescriptorConverter(
         return new UriBuilder {
             Host   = Host,
             Port   = (int)endpoint.Port,
-            Path   = $"{endpoint.RtmpAppname}/{liveId}",
-            Scheme = "rtmp"
-        };
-    }
-
-    private UriBuilder BuildPullUri(string liveId, StreamEndpoint endpoint) {
-        return new UriBuilder {
-            Host   = Host,
-            Port   = (int)endpoint.RtmpPort,
             Path   = $"{endpoint.RtmpAppname}/{liveId}",
             Scheme = "rtmp"
         };

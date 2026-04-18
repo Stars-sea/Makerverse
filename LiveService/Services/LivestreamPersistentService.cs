@@ -26,8 +26,9 @@ public class LivestreamPersistentService(
             .WithPrefix($"{liveId}/");
         IAsyncEnumerable<Item>? enumerable = minio.ListObjectsEnumAsync(args, ct);
 
+        int prefixLen = liveId.Length + 1;
         await foreach (Item item in enumerable) {
-            yield return item.Key;
+            yield return item.Key[prefixLen..];
         }
     }
 

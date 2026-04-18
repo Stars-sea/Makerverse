@@ -152,7 +152,14 @@ public class LivesController(
             await queue.QueueWatcherAsync(live.Id);
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
-            return descriptorConverter.ConvertLivestreamEndpoint(ret.Value.Stream);
+
+            StreamDescriptor descriptor = ret.Value.Stream;
+
+            string  pullUrl    = descriptorConverter.BuildPullUri(live.Id, descriptor.Endpoint);
+            string  pushUrl    = descriptorConverter.BuildPushUri(descriptor);
+            string? passphrase = descriptor.Endpoint.HasPassphrase ? descriptor.Endpoint.Passphrase : null;
+
+            return new LivestreamEndpointDto(pushUrl, pullUrl, passphrase);
         }
 
         if (dto.Status == "stop") {
@@ -177,15 +184,21 @@ public class LivesController(
         string? userId  = User.FindFirstValue(ClaimTypes.NameIdentifier);
         bool    isOwner = live.StreamerId == userId;
 
-        if (isOwner && live.Status is LiveStatus.Starting or LiveStatus.Started) {
-            var ret = await livestreamService.GetStreamInfoAsync(live.Id);
-            if (!ret.IsError) return Ok(descriptorConverter.ConvertLivestreamEndpoint(ret.Value.Stream));
-            // TODO: Add telemetry of the error for debugging
-        }
+        if (live.Status is not (LiveStatus.Starting or LiveStatus.Started))
+            return Ok(new VodEndpointDto(
+                Url: $"/lives/{live.Id}/segments"
+            ));
 
-        return Ok(new VodEndpointDto(
-            Url: $"/lives/{live.Id}/segments/playlist.m3u8"
-        ));
+        var ret = await livestreamService.GetStreamInfoAsync(live.Id);
+        if (ret.IsError) // TODO: Add telemetry of the error for debugging
+            return ret.FirstError.ToActionResult();
+
+        StreamDescriptor descriptor = ret.Value.Stream;
+
+        string  pullUrl    = descriptorConverter.BuildPullUri(live.Id, descriptor.Endpoint);
+        string? pushUrl    = isOwner ? descriptorConverter.BuildPushUri(descriptor) : null;
+        string? passphrase = isOwner && descriptor.Endpoint.HasPassphrase ? descriptor.Endpoint.Passphrase : null;
+        return Ok(new LivestreamEndpointDto(pushUrl, pullUrl, passphrase));
     }
 
     #endregion
@@ -196,7 +209,6 @@ public class LivesController(
     // - Generate the HLS manifest file for the live stream (LiveTerminateHandler)
     // - Preview live stream (generate preview image from the first segment or use a placeholder image)
     [HttpGet("{id}/segments")]
-    [HttpGet("{id}/segments/playlist.m3u8")]
     public async Task<ActionResult<List<string>>> ListLiveSegments(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
         if (live.Status is LiveStatus.Created or LiveStatus.Starting)
@@ -210,6 +222,7 @@ public class LivesController(
     }
 
     [HttpGet("{id}/segments/{num:int}")]
+    [HttpGet("{id}/segments/segment_{num:int}.ts")]
     public async Task GetLiveSegment(string id, int num) {
         if (await db.Lives.FindAsync(id) is not {} live) {
             Response.StatusCode = 404;

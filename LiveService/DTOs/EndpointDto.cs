@@ -1,7 +1,7 @@
 ﻿namespace LiveService.DTOs;
 
 public record LivestreamEndpointDto(
-    string PushUrl,
+    string? PushUrl,
     string PullUrl,
     string? Passphrase
 );
