@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
+#pragma warning disable ASPIRECERTIFICATES001
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -31,14 +32,17 @@ var postgres = builder.AddPostgres("postgres", port: 5432)
 var keycloakDb = postgres.AddDatabase("keycloak-db");
 var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithEnvironment("KC_HTTP_ENABLED", "true")
-    .WithEnvironment("KC_HOSTNAME", ReferenceExpression.Create($"https://{hostId}"))
-    .WithEnvironment("KC_HOSTNAME_STRICT", "true")
-    .WithEnvironment("KC_PROXY_HEADERS", "xforwarded")
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
     .WaitFor(keycloakDb)
     .WithEnvironment("VIRTUAL_HOST", hostId)
     .WithEnvironment("VIRTUAL_PORT", "8080");
+
+if (!builder.Environment.IsDevelopment()) {
+    keycloak.WithEnvironment("KC_HOSTNAME", ReferenceExpression.Create($"https://{hostId}"))
+        .WithEnvironment("KC_HOSTNAME_STRICT", "true")
+        .WithEnvironment("KC_PROXY_HEADERS", "xforwarded");
+}
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
     .WithEnvironment("TYPESENSE_API_KEY", typesenseApiKey)
@@ -52,11 +56,9 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithDataVolume("rabbitmq-data")
     .WithManagementPlugin(port: 15672);
 
-#pragma warning disable ASPIRECERTIFICATES001
 var redis = builder.AddRedis("redis", port: 6379)
     .WithoutHttpsCertificate()
     .WithDataVolume("redis-data");
-#pragma warning restore ASPIRECERTIFICATES001
 
 var minio = builder.AddMinioContainer("minio")
     .WithDataVolume("minio-data");
