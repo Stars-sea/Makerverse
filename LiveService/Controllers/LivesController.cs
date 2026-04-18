@@ -57,11 +57,31 @@ public class LivesController(
             .OrderByDescending(x => x.CreatedAt).ToListAsync();
     }
 
+    [HttpGet("streamer/{streamerId}")]
+    public async Task<ActionResult<List<Live>>> GetLivesByStreamer(string streamerId) {
+        return await db.Lives.AsQueryable()
+            .Where(live => live.StreamerId == streamerId)
+            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+    }
+
+    [Authorize]
+    [HttpGet("streamer/me")]
+    public ActionResult<List<Live>> GetMyLives() {
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return BadRequest("Cannot get user details.");
+
+        return RedirectToAction(nameof(GetLivesByStreamer),
+            new {
+                streamerId = userId
+            }
+        );
+    }
+
     [HttpGet("online")]
     public async Task<ActionResult<List<Live>>> ListOnlineLives() {
         var ret = await livestreamService.GetActiveStreamAsync();
         if (ret.IsError) return ret.FirstError.ToActionResult();
-        
+
         if (!ret.Value.Any()) return Ok(new List<Live>());
 
         var onlineLives = ret.Value.Select(d => d.LiveId);
@@ -120,7 +140,7 @@ public class LivesController(
 
     [Authorize]
     [HttpPut("{id}/status")]
-    public async Task<ActionResult<StreamEndpointDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
+    public async Task<ActionResult<LivestreamEndpointDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -132,7 +152,7 @@ public class LivesController(
             await queue.QueueWatcherAsync(live.Id);
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
-            return descriptorConverter.Convert(ret.Value.Stream);
+            return descriptorConverter.ConvertLivestreamEndpoint(ret.Value.Stream);
         }
 
         if (dto.Status == "stop") {
@@ -147,18 +167,25 @@ public class LivesController(
     }
 
     [Authorize]
-    [HttpGet("{id}/status")]
-    public async Task<ActionResult<StreamEndpointDto>> GetLiveEndpoint(string id) {
+    [HttpGet("{id}/endpoint")]
+    [ProducesResponseType(typeof(LivestreamEndpointDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(VodEndpointDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetLiveEndpoint(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
-        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is null || live.StreamerId != userId) return Forbid();
+        string? userId  = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        bool    isOwner = live.StreamerId == userId;
 
-        var ret = await livestreamService.GetStreamInfoAsync(live.Id);
-        return ret.MatchFirst(
-            resp => Ok(descriptorConverter.Convert(resp.Stream)),
-            error => error.ToActionResult()
-        );
+        if (isOwner && live.Status is LiveStatus.Starting or LiveStatus.Started) {
+            var ret = await livestreamService.GetStreamInfoAsync(live.Id);
+            if (!ret.IsError) return Ok(descriptorConverter.ConvertLivestreamEndpoint(ret.Value.Stream));
+            // TODO: Add telemetry of the error for debugging
+        }
+
+        return Ok(new VodEndpointDto(
+            Url: $"/lives/{live.Id}/segments/playlist.m3u8"
+        ));
     }
 
     #endregion
@@ -169,6 +196,7 @@ public class LivesController(
     // - Generate the HLS manifest file for the live stream (LiveTerminateHandler)
     // - Preview live stream (generate preview image from the first segment or use a placeholder image)
     [HttpGet("{id}/segments")]
+    [HttpGet("{id}/segments/playlist.m3u8")]
     public async Task<ActionResult<List<string>>> ListLiveSegments(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
         if (live.Status is LiveStatus.Created or LiveStatus.Starting)
@@ -199,7 +227,7 @@ public class LivesController(
             await Response.WriteAsJsonAsync(statRet.Errors);
             return;
         }
-        
+
         ObjectStat stat = statRet.Value;
 
         Response.ContentType          = "video/MP2T";
@@ -207,7 +235,7 @@ public class LivesController(
         Response.Headers.AcceptRanges = "bytes";
         Response.Headers.ETag         = stat.ETag;
         Response.Headers.LastModified = stat.LastModified.ToString("R");
-        Response.Headers.CacheControl = "public, max-age=600"; // Cache for 10 mins
+        Response.Headers.CacheControl = "public, max-age=600";// Cache for 10 mins
 
         var ret = await persistentService.GetSegmentAsync(id, num, Response.Body);
         if (ret.IsError) {
