@@ -61,11 +61,13 @@ public class LivesController(
     public async Task<ActionResult<List<Live>>> ListOnlineLives() {
         var ret = await livestreamService.GetActiveStreamAsync();
         if (ret.IsError) return ret.FirstError.ToActionResult();
+        
+        if (!ret.Value.Any()) return Ok(new List<Live>());
 
-        IEnumerable<StreamDescriptor> descriptors = ret.Value;
+        var onlineLives = ret.Value.Select(d => d.LiveId);
 
         return await db.Lives.AsQueryable()
-            .Where(live => descriptors.Any(d => d.LiveId == live.Id))
+            .Where(live => onlineLives.Contains(live.Id))
             .OrderByDescending(x => x.CreatedAt).ToListAsync();
     }
 
