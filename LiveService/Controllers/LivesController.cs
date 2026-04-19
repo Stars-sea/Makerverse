@@ -54,14 +54,14 @@ public class LivesController(
     [HttpGet]
     public async Task<ActionResult<List<Live>>> GetLives() {
         return await db.Lives.AsQueryable()
-            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+            .OrderByDescending(x => x.StartedAt ?? x.CreatedAt).ToListAsync();
     }
 
     [HttpGet("streamer/{streamerId}")]
     public async Task<ActionResult<List<Live>>> GetLivesByStreamer(string streamerId) {
         return await db.Lives.AsQueryable()
             .Where(live => live.StreamerId == streamerId)
-            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+            .OrderByDescending(x => x.StartedAt ?? x.CreatedAt).ToListAsync();
     }
 
     [Authorize]
@@ -88,7 +88,7 @@ public class LivesController(
 
         return await db.Lives.AsQueryable()
             .Where(live => onlineLives.Contains(live.Id))
-            .OrderByDescending(x => x.CreatedAt).ToListAsync();
+            .OrderByDescending(x => x.StartedAt ?? x.CreatedAt).ToListAsync();
     }
 
     [HttpGet("{id}")]

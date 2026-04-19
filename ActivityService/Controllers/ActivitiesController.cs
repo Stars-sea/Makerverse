@@ -56,14 +56,37 @@ public class ActivitiesController(
             activity
         );
     }
-    
+
     [HttpGet]
     public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetActivities() {
         var activities = await db.Activities
-            .OrderByDescending(x => x.CreatedAt)
+            .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
             .Select(x => SimplifiedActivityResponseDto.FromModel(x))
             .ToListAsync();
         return activities;
+    }
+
+    [HttpGet("publisher/{publisherId}")]
+    public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetActivitiesByPublisher(string publisherId) {
+        var activities = await db.Activities
+            .Where(x => x.PublisherId == publisherId)
+            .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+            .Select(x => SimplifiedActivityResponseDto.FromModel(x))
+            .ToListAsync();
+        return activities;
+    }
+
+    [HttpGet("publisher/me")]
+    public ActionResult<List<SimplifiedActivityResponseDto>> GetMyActivities() {
+        string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null) return BadRequest("Cannot get user details.");
+
+        return RedirectToAction(
+            nameof(GetActivitiesByPublisher),
+            new {
+                publisherId = userId
+            }
+        );
     }
 
     [HttpGet("{id}")]
