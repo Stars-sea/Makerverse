@@ -23,7 +23,7 @@ public class ActivitiesController(
 
     [Authorize]
     [HttpPost]
-    public async Task<ActionResult<Activity>> CreateActivity(CreateActivityDto dto) {
+    public async Task<ActionResult<ActivityResponseDto>> CreateActivity(CreateActivityDto dto) {
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return BadRequest("Cannot get user details.");
 
@@ -58,16 +58,17 @@ public class ActivitiesController(
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Activity>> GetActivity(string id) {
+    public async Task<ActionResult<ActivityResponseDto>> GetActivity(string id) {
         Activity? activity = await db.Activities.FindAsync(id);
         if (activity is null) return NotFound();
 
-        await db.Activities.Where(x => x.Id == activity.Id)
+        await db.Activities
+            .Where(x => x.Id == activity.Id)
             .ExecuteUpdateAsync(x =>
                 x.SetProperty(a => a.ViewCount, a => a.ViewCount + 1)
             );
 
-        return activity;
+        return ActivityResponseDto.FromModel(activity);
     }
 
     [Authorize]
@@ -123,7 +124,7 @@ public class ActivitiesController(
 
     [Authorize]
     [HttpPost("{activityId}/comments")]
-    public async Task<ActionResult<Comment>> CreateComment(string activityId, CreateCommentDto dto) {
+    public async Task<ActionResult<CommentResponseDto>> CreateComment(string activityId, CreateCommentDto dto) {
         Activity? activity = await db.Activities.FindAsync(activityId);
         if (activity is null) return NotFound();
 
@@ -148,11 +149,25 @@ public class ActivitiesController(
         );
     }
 
+    [HttpGet("{activityId}/comments")]
+    public async Task<ActionResult<List<CommentResponseDto>>> GetComments(string activityId) {
+        Activity? activity = await db.Activities.FindAsync(activityId);
+        if (activity is null) return NotFound();
+
+        var comments = await db.Comments
+            .Where(c => c.ActivityId == activityId)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => CommentResponseDto.FromModel(c))
+            .ToListAsync();
+
+        return comments;
+    }
+
     [HttpGet("{activityId}/comments/{commentId}")]
-    public async Task<ActionResult<Comment>> GetComment(string activityId, string commentId) {
+    public async Task<ActionResult<CommentResponseDto>> GetComment(string activityId, string commentId) {
         Comment? comment = await db.Comments.FindAsync(commentId);
         if (comment is null || comment.ActivityId != activityId) return NotFound();
-        return comment;
+        return CommentResponseDto.FromModel(comment);
     }
 
     [Authorize]
