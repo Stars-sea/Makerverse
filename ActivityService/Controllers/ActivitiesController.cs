@@ -56,6 +56,15 @@ public class ActivitiesController(
             activity
         );
     }
+    
+    [HttpGet]
+    public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetActivities() {
+        var activities = await db.Activities
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => SimplifiedActivityResponseDto.FromModel(x))
+            .ToListAsync();
+        return activities;
+    }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ActivityResponseDto>> GetActivity(string id) {

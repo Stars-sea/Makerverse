@@ -27,3 +27,33 @@ public record ActivityResponseDto(
         );
     }
 }
+
+public record SimplifiedActivityResponseDto(
+    string Id,
+    string PublisherId,
+    string Title,
+    string ShortContent,
+    DateTime CreatedOrUpdatedAt,
+    ulong Votes,
+    ulong ViewCount,
+    List<string> TagSlugs
+) {
+    private const int MaxContentLength = 100;
+
+    public static SimplifiedActivityResponseDto FromModel(Models.Activity activity) {
+        string shortContent = activity.Content.Length > MaxContentLength
+            ? activity.Content[..MaxContentLength] + "..."
+            : activity.Content;
+        
+        return new SimplifiedActivityResponseDto(
+            activity.Id,
+            activity.PublisherId,
+            activity.Title,
+            shortContent,
+            activity.UpdatedAt ?? activity.CreatedAt,
+            activity.Votes,
+            activity.ViewCount,
+            activity.TagSlugs.Take(4).ToList()
+        );
+    }
+}
