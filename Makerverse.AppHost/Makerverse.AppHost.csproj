@@ -20,13 +20,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\AccountService\AccountService.csproj" />
       <ProjectReference Include="..\ActivityService\ActivityService.csproj" />
       <ProjectReference Include="..\LiveService\LiveService.csproj" />
       <ProjectReference Include="..\SearchService\SearchService.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="data\keycloak-realms\" />
     </ItemGroup>
 
 </Project>

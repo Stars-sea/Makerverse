@@ -7,9 +7,11 @@ using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var typesenseApiKey   = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "typesense-api-key");
-var livestreamBucket  = builder.AddParameter("livestream-bucket", value: "videos", publishValueAsDefault: true);
-var livestreamAppname = builder.AddParameter("livestream-appname", value: "lives", publishValueAsDefault: true);
+var typesenseApiKey            = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "typesense-api-key");
+var livestreamBucket           = builder.AddParameter("livestream-bucket", value: "videos", publishValueAsDefault: true);
+var livestreamAppname          = builder.AddParameter("livestream-appname", value: "lives", publishValueAsDefault: true);
+var accountAvatarBucket        = builder.AddParameter("account-avatar-bucket", value: "avatars", publishValueAsDefault: true);
+var accountServiceClientSecret = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "account-service-client-secret");
 
 var hostId   = builder.AddParameter("host-id", value: "id.makerverse.local");
 var hostApi  = builder.AddParameter("host-api", value: "api.makerverse.local");
@@ -32,6 +34,7 @@ var postgres = builder.AddPostgres("postgres", port: 5432)
 var keycloakDb = postgres.AddDatabase("keycloak-db");
 var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithEnvironment("KC_HTTP_ENABLED", "true")
+    .WithEnvironment("ACCOUNT_SERVICE_CLIENT_SECRET", accountServiceClientSecret)
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
     .WaitFor(keycloakDb)
@@ -56,7 +59,7 @@ var rabbitmq = builder.AddRabbitMQ("messaging", port: 5672)
     .WithDataVolume("rabbitmq-data")
     .WithManagementPlugin(port: 15672);
 
-var redis = builder.AddRedis("redis", port: 6379)
+var redis = builder.AddRedis("redis")
     .WithoutHttpsCertificate()
     .WithDataVolume("redis-data");
 
@@ -74,6 +77,22 @@ var livestreamService = builder.AddLivestreamService(
     .WithRemoteImageTag("latest")
     .WithEnvironment("RUST_LOG", "info")
     .WithReference(minio)
+    .WaitFor(minio);
+
+var accountService = builder.AddProject<Projects.AccountService>("account-svc")
+    .WithContainerRegistry(registry)
+    .WithRemoteImageTag("latest")
+    .WithReference(keycloak)
+    .WithReference(minio)
+    .WithEnvironment("AvatarOptions__BucketName", accountAvatarBucket)
+    .WithEnvironment("KeycloakOptions__Realm", "makerverse")
+    .WithEnvironment("KeycloakOptions__PublicClientId", "makerverse")
+    .WithEnvironment("KeycloakAdminOptions__ClientId", "makerverse-account-service")
+    .WithEnvironment("KeycloakAdminOptions__ClientSecret", accountServiceClientSecret)
+    .WithEnvironment("VIRTUAL_HOST", hostId)
+    .WithEnvironment("VIRTUAL_PORT", "8080")
+    .WithEnvironment("VIRTUAL_PATH", "/account/")
+    .WaitFor(keycloak)
     .WaitFor(minio);
 
 var liveDb = postgres.AddDatabase("live-db");
