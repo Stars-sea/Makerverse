@@ -30,3 +30,20 @@ public sealed class UserProfileDto {
     [JsonPropertyName("roles")]
     public IReadOnlyList<string> Roles { get; init; } = [];
 }
+
+public sealed class SimpleUserProfileDto {
+    [JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+    
+    [JsonPropertyName("username")]
+    public string? Username { get; init; }
+    
+    [JsonPropertyName("firstName")]
+    public string? FirstName { get; init; }
+    
+    [JsonPropertyName("lastName")]
+    public string? LastName { get; init; }
+    
+    [JsonPropertyName("avatarUrl")]
+    public string? AvatarUrl { get; init; }
+}

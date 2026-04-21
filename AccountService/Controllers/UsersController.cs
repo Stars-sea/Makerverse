@@ -37,6 +37,16 @@ public sealed class UsersController(
         return Ok(profileService.ToUserProfile(result.Value, User));
     }
 
+    [AllowAnonymous]
+    [HttpGet("{userId}")]
+    public async Task<ActionResult<SimpleUserProfileDto>> GetUserProfileById(string userId, CancellationToken ct) {
+        var result = await adminService.GetUserByIdAsync(userId, ct);
+        if (result.IsError)
+            return result.Errors[0].ToActionResult();
+
+        return Ok(profileService.ToSimpleUserProfile(result.Value));
+    }
+
     [Authorize]
     [HttpPut("me")]
     public async Task<ActionResult<UserProfileDto>> UpdateMe([FromBody] UpdateMyProfileDto request, CancellationToken ct) {

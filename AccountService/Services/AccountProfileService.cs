@@ -23,6 +23,16 @@ public sealed class AccountProfileService {
         };
     }
 
+    public SimpleUserProfileDto ToSimpleUserProfile(KeycloakUserRepresentation user) {
+        return new SimpleUserProfileDto {
+            Id        = user.Id ?? string.Empty,
+            Username  = user.Username,
+            FirstName = user.FirstName,
+            LastName  = user.LastName,
+            AvatarUrl = string.IsNullOrWhiteSpace(user.Id) ? null : $"/account/users/{user.Id}/avatar"
+        };
+    }
+
     public AvatarUploadResponseDto ToAvatarUploadResponse(string userId, StoredAvatar avatar) {
         return new AvatarUploadResponseDto {
             AvatarUrl   = $"/account/users/{userId}/avatar?v={avatar.Version}",
