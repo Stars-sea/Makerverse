@@ -45,8 +45,9 @@ public class ActivitiesController(
             activity.Title,
             activity.Content,
             activity.TagSlugs.ToArray(),
-            activity.CreatedAt)
-        );
+            activity.CreatedAt,
+            userId
+        ));
 
         return CreatedAtAction(
             nameof(GetActivity),

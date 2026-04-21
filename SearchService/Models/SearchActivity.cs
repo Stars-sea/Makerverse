@@ -17,4 +17,7 @@ public class SearchActivity {
 
     [JsonPropertyName("createdAt")]
     public long CreatedAt { get; set; }
+    
+    [JsonPropertyName("publisherId")]
+    public required string PublisherId { get; set; }
 }

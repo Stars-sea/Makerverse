@@ -5,5 +5,6 @@ public record ActivityCreated(
     string Title,
     string Content,
     string[] Tags,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string PublisherId
 );

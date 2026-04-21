@@ -3,5 +3,6 @@
 public record LiveCreated(
     string LiveId,
     string Title,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string StreamerId
 );

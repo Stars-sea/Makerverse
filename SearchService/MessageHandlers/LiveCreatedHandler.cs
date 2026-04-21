@@ -12,9 +12,10 @@ public class LiveCreatedHandler(
         long createdAt = new DateTimeOffset(message.CreatedAt).ToUnixTimeSeconds();
 
         SearchLive doc = new() {
-            Id        = message.LiveId,
-            Title     = message.Title,
-            CreatedAt = createdAt,
+            Id         = message.LiveId,
+            Title      = message.Title,
+            CreatedAt  = createdAt,
+            StreamerId = message.StreamerId
         };
         await client.CreateDocument(SearchInitializer.LiveCollectionName, doc);
     }

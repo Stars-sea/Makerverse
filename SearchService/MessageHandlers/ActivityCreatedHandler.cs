@@ -12,11 +12,12 @@ public class ActivityCreatedHandler(
         long createdAt = new DateTimeOffset(message.CreatedAt).ToUnixTimeSeconds();
 
         SearchActivity activity = new() {
-            Id        = message.ActivityId,
-            Title     = message.Title,
-            Content   = message.Content,
-            Tags      = message.Tags,
-            CreatedAt = createdAt
+            Id          = message.ActivityId,
+            Title       = message.Title,
+            Content     = message.Content,
+            Tags        = message.Tags,
+            CreatedAt   = createdAt,
+            PublisherId = message.PublisherId
         };
 
         await client.CreateDocument(SearchInitializer.ActivityCollectionName, activity);

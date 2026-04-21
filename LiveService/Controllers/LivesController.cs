@@ -40,7 +40,7 @@ public class LivesController(
         db.Lives.Add(live);
         await db.SaveChangesAsync();
 
-        await bus.PublishAsync(new LiveCreated(live.Id, live.Title, live.CreatedAt));
+        await bus.PublishAsync(new LiveCreated(live.Id, live.Title, live.CreatedAt, userId));
 
         return CreatedAtAction(
             nameof(GetLive),

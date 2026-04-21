@@ -30,7 +30,8 @@ public static class SearchInitializer {
             new Field("title", FieldType.String),
             new Field("content", FieldType.String),
             new Field("tags", FieldType.StringArray),
-            new Field("createdAt", FieldType.Int64)
+            new Field("createdAt", FieldType.Int64),
+            new Field("publisherId", FieldType.String)
         ]) {
             DefaultSortingField = "createdAt"
         };
@@ -53,7 +54,8 @@ public static class SearchInitializer {
         [
             new Field("id", FieldType.String),
             new Field("title", FieldType.String),
-            new Field("createdAt", FieldType.Int64)
+            new Field("createdAt", FieldType.Int64),
+            new Field("publisherId", FieldType.String)
         ]) {
             DefaultSortingField = "createdAt"
         };

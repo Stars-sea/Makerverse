@@ -11,4 +11,7 @@ public class SearchLive {
 
     [JsonPropertyName("createdAt")]
     public long CreatedAt { get; set; }
+    
+    [JsonPropertyName("streamerId")]
+    public required string StreamerId { get; set; }
 }
