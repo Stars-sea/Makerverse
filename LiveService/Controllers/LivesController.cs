@@ -164,10 +164,8 @@ public class LivesController(
 
         if (dto.Status == "stop") {
             var ret = await livestreamService.StopLivestreamAsync(live.Id);
-            return ret.MatchFirst(
-                _ => NoContent(),
-                error => error.ToActionResult()
-            );
+            if (ret is {} err)
+                return err.ToActionResult();
         }
 
         return BadRequest($"Invalid status value '{dto.Status}'.");

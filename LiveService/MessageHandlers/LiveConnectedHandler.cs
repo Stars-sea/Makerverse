@@ -13,7 +13,7 @@ public class LiveConnectedHandler(
         
         logger.LogWarning("Received invalid live connected event for live {LiveId}, terminating the stream", message.LiveId);
         var ret = await livestreamService.StopLivestreamAsync(message.LiveId);
-        if (!ret.Match(r => r, _ => false)) {
+        if (ret is not null) {
             logger.LogError("Failed to stop livestream for live {LiveId} after receiving invalid live connected event", message.LiveId);
         }
     }

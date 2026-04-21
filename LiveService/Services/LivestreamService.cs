@@ -61,7 +61,7 @@ public class LivestreamService(
         return resp;
     }
 
-    public async Task<ErrorOr<bool>> StopLivestreamAsync(
+    public async Task<Error?> StopLivestreamAsync(
         string liveId,
         CancellationToken ct = default
     ) {
@@ -92,10 +92,18 @@ public class LivestreamService(
             );
         }
 
-        live.Status = LiveStatus.Stopping;
+        if (!resp.IsSuccess) {
+            return Error.Failure(
+                "LivestreamStopFailed",
+                $"Livestream service failed to stop livestream for live {liveId}."
+            );
+        }
+
+        live.Status = LiveStatus.Stopped;
+        live.StoppedAt ??= DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        return resp.IsSuccess;
+        return null;
     }
 
     public async Task<ErrorOr<GetLivestreamInfoResponse>> GetStreamInfoAsync(

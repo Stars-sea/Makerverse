@@ -55,7 +55,7 @@ public static class SearchInitializer {
             new Field("id", FieldType.String),
             new Field("title", FieldType.String),
             new Field("createdAt", FieldType.Int64),
-            new Field("publisherId", FieldType.String)
+            new Field("streamerId", FieldType.String)
         ]) {
             DefaultSortingField = "createdAt"
         };
