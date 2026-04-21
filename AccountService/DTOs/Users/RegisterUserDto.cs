@@ -17,9 +17,11 @@ public sealed class RegisterUserDto {
     [JsonPropertyName("password")]
     public string Password { get; set; } = string.Empty;
 
+    [Required]
     [JsonPropertyName("firstName")]
-    public string? FirstName { get; set; }
+    public string FirstName { get; set; } = string.Empty;
 
+    [Required]
     [JsonPropertyName("lastName")]
-    public string? LastName { get; set; }
+    public string LastName { get; set; } = string.Empty;
 }

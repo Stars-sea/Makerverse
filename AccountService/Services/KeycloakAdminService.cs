@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using AccountService.DTOs.Users;
 using AccountService.Options;
@@ -28,34 +29,34 @@ public sealed class KeycloakAdminService(
         KeycloakUserRepresentation user = new() {
             Username      = request.Username,
             Email         = request.Email,
-            FirstName     = request.FirstName,
-            LastName      = request.LastName,
+            FirstName     = request.FirstName.Trim(),
+            LastName      = request.LastName.Trim(),
             EmailVerified = false,
-            Enabled       = true,
-            Credentials = [
-                new KeycloakCredentialRepresentation {
-                    Value     = request.Password,
-                    Temporary = false
-                }
-            ]
+            Enabled       = true
         };
 
         using HttpRequestMessage  httpRequest = CreateRequest(HttpMethod.Post, $"/admin/realms/{Realm}/users", token, user);
         using HttpResponseMessage response    = await httpClient.SendAsync(httpRequest, ct);
         string                    content     = await response.Content.ReadAsStringAsync(ct);
 
-        if (response.IsSuccessStatusCode) {
-            string? location = response.Headers.Location?.ToString();
-            string? userId   = location?.Split('/').LastOrDefault();
-            if (string.IsNullOrWhiteSpace(userId))
-                return Error.Failure("Failed to resolve created user id.");
-
-            var created = await GetUserByIdAsync(userId, ct);
-            return created;
+        if (!response.IsSuccessStatusCode) {
+            logger.LogWarning("Keycloak register user failed with status {status}: {content}", (int)response.StatusCode, content);
+            return ToError(response.StatusCode, content);
         }
 
-        logger.LogWarning("Keycloak register user failed with status {status}: {content}", (int)response.StatusCode, content);
-        return ToError(response.StatusCode, content);
+        string? location = response.Headers.Location?.ToString();
+        string? userId   = location?.Split('/').LastOrDefault();
+        if (string.IsNullOrWhiteSpace(userId))
+            return Error.Failure("Failed to resolve created user id.");
+
+        var passwordResult = await SetPasswordAsync(userId, request.Password, token, ct);
+        if (passwordResult.IsError) {
+            logger.LogWarning("Keycloak set password failed for user {userId}: {error}", userId, passwordResult.Errors[0].Description);
+            await DeleteUserIfExistsAsync(userId, token, ct);
+            return passwordResult.Errors[0];
+        }
+
+        return await GetUserByIdAsync(userId, ct);
     }
 
     public async Task<ErrorOr<KeycloakUserRepresentation>> GetUserByIdAsync(string userId, CancellationToken ct = default) {
@@ -137,6 +138,32 @@ public sealed class KeycloakAdminService(
             return ToError(response.StatusCode, content);
 
         return await GetUserByIdAsync(userId, ct);
+    }
+
+    private async Task<ErrorOr<Success>> SetPasswordAsync(string userId, string password, string bearerToken, CancellationToken ct) {
+        KeycloakCredentialRepresentation credential = new() {
+            Value     = password,
+            Temporary = false
+        };
+
+        using HttpRequestMessage  request  = CreateRequest(HttpMethod.Put, $"/admin/realms/{Realm}/users/{userId}/reset-password", bearerToken, credential);
+        using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+        string                    content  = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+            return ToError(response.StatusCode, content);
+
+        return Result.Success;
+    }
+
+    private async Task DeleteUserIfExistsAsync(string userId, string bearerToken, CancellationToken ct) {
+        using HttpRequestMessage  request  = CreateRequest(HttpMethod.Delete, $"/admin/realms/{Realm}/users/{userId}", bearerToken);
+        using HttpResponseMessage response = await httpClient.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode && response.StatusCode != HttpStatusCode.NotFound) {
+            string content = await response.Content.ReadAsStringAsync(ct);
+            logger.LogWarning("Keycloak cleanup delete user failed for user {userId} with status {status}: {content}", userId, (int)response.StatusCode, content);
+        }
     }
 
     private async Task<ErrorOr<string>> GetAdminAccessTokenAsync(CancellationToken ct) {
