@@ -83,7 +83,7 @@ public class LivestreamService(
                     LiveId = liveId
                 },
                 cancellationToken: ct
-            )!;
+            );
         }
         catch (Exception e) {
             return Error.Failure(

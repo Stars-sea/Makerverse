@@ -66,15 +66,11 @@ public class LivesController(
 
     [Authorize]
     [HttpGet("streamer/me")]
-    public ActionResult<List<Live>> GetMyLives() {
+    public async Task<ActionResult<List<Live>>> GetMyLives() {
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return BadRequest("Cannot get user details.");
 
-        return RedirectToAction(nameof(GetLivesByStreamer),
-            new {
-                streamerId = userId
-            }
-        );
+        return await GetLivesByStreamer(userId);
     }
 
     [HttpGet("online")]

@@ -78,16 +78,11 @@ public class ActivitiesController(
     }
 
     [HttpGet("publisher/me")]
-    public ActionResult<List<SimplifiedActivityResponseDto>> GetMyActivities() {
+    public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetMyActivities() {
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null) return BadRequest("Cannot get user details.");
 
-        return RedirectToAction(
-            nameof(GetActivitiesByPublisher),
-            new {
-                publisherId = userId
-            }
-        );
+        return await GetActivitiesByPublisher(userId);
     }
 
     [HttpGet("{id}")]
