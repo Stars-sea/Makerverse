@@ -7,8 +7,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.2.2" />
-        <PackageReference Include="Aspire.StackExchange.Redis" Version="13.2.2" />
+        <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.2.3" />
+        <PackageReference Include="Aspire.StackExchange.Redis" Version="13.2.3" />
         <PackageReference Include="CommunityToolkit.Aspire.Minio.Client" Version="13.2.1-beta.532" />
         <PackageReference Include="Google.Protobuf" Version="3.34.1" />
         <PackageReference Include="Grpc.AspNetCore" Version="2.76.0" />
@@ -17,8 +17,8 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.6" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6">
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
