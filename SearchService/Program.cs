@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
+builder.Services.AddTauriCors();
 
 await builder.UseWolverineWithRabbitMqAsync(options => {
     options.ListenToRabbitQueue(
@@ -46,6 +47,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment()) {
     app.MapOpenApi();
 }
+
+app.UseCors(CorsExtensions.TauriCorsPolicyName);
 
 app.MapControllers();
 app.MapDefaultEndpoints();

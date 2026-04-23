@@ -20,7 +20,9 @@ public static class AuthExtensions {
                             "http://localhost:6001/realms/makerverse",
                             "http://keycloak/realms/makerverse",
                             "http://id.makerverse.local/realms/makerverse",
-                            "https://id.makerverse.local/realms/makerverse"
+                            "https://id.makerverse.local/realms/makerverse",
+                            "http://id.makerverse.cn/realms/makerverse",
+                            "https://id.makerverse.cn/realms/makerverse"
                         ]
                     };
                 }

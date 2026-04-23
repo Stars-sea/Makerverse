@@ -10,6 +10,7 @@ builder.AddServiceDefaults();
 
 builder.AddMinioClient("minio");
 
+builder.Services.AddTauriCors();
 builder.Services.AddKeycloakAuthentication();
 builder.Services.AddAuthorization();
 
@@ -32,6 +33,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment()) {
     app.MapOpenApi();
 }
+
+app.UseCors(CorsExtensions.TauriCorsPolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -14,6 +14,7 @@ builder.AddServiceDefaults();
 
 builder.AddRedisClient("redis");
 builder.Services.AddScoped<TagService>();
+builder.Services.AddTauriCors();
 builder.Services.AddKeycloakAuthentication();
 
 builder.AddNpgsqlDbContext<ActivityDbContext>("activity-db");
@@ -29,6 +30,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment()) {
     app.MapOpenApi();
 }
+
+app.UseCors(CorsExtensions.TauriCorsPolicyName);
 
 app.MapControllers();
 app.MapDefaultEndpoints();
