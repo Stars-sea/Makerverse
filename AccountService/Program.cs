@@ -11,18 +11,20 @@ builder.AddServiceDefaults();
 builder.AddMinioClient("minio");
 
 builder.Services.AddTauriCors();
-builder.Services.AddKeycloakAuthentication();
+builder.Services.AddKeycloakAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
 
 builder.Services.Configure<KeycloakOptions>(builder.Configuration.GetSection("KeycloakOptions"));
 builder.Services.Configure<KeycloakAdminOptions>(builder.Configuration.GetSection("KeycloakAdminOptions"));
 builder.Services.Configure<AvatarOptions>(builder.Configuration.GetSection("AvatarOptions"));
 
-builder.Services.AddHttpClient<KeycloakOidcService>(client => {
-    client.BaseAddress = new Uri("http://keycloak");
+builder.Services.AddHttpClient<KeycloakOidcService>((serviceProvider, client) => {
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KeycloakOptions>>().Value;
+    client.BaseAddress = new Uri(options.InternalBaseUrl);
 });
-builder.Services.AddHttpClient<KeycloakAdminService>(client => {
-    client.BaseAddress = new Uri("http://keycloak");
+builder.Services.AddHttpClient<KeycloakAdminService>((serviceProvider, client) => {
+    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KeycloakOptions>>().Value;
+    client.BaseAddress = new Uri(options.InternalBaseUrl);
 });
 
 builder.Services.AddScoped<AccountProfileService>();

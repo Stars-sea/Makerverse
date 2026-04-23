@@ -77,6 +77,7 @@ public class ActivitiesController(
         return activities;
     }
 
+    [Authorize]
     [HttpGet("publisher/me")]
     public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetMyActivities() {
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

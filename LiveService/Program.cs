@@ -18,7 +18,8 @@ builder.AddRedisClient("redis");
 builder.AddMinioClient("minio");
 
 builder.Services.AddTauriCors();
-builder.Services.AddKeycloakAuthentication();
+builder.Services.AddKeycloakAuthentication(builder.Configuration);
+builder.Services.AddAuthorization();
 
 builder.AddNpgsqlDbContext<LiveDbContext>("live-db");
 
@@ -51,6 +52,8 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.UseCors(CorsExtensions.TauriCorsPolicyName);
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapDefaultEndpoints();

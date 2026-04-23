@@ -37,14 +37,11 @@ var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithEnvironment("ACCOUNT_SERVICE_CLIENT_SECRET", accountServiceClientSecret)
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
-    .WaitFor(keycloakDb)
-    .WithEnvironment("VIRTUAL_HOST", hostId)
-    .WithEnvironment("VIRTUAL_PORT", "8080");
+    .WaitFor(keycloakDb);
 
 if (!builder.Environment.IsDevelopment()) {
-    keycloak.WithEnvironment("KC_HOSTNAME", ReferenceExpression.Create($"https://{hostId}"))
-        .WithEnvironment("KC_HOSTNAME_STRICT", "true")
-        .WithEnvironment("KC_PROXY_HEADERS", "xforwarded");
+    keycloak.WithEnvironment("KC_HOSTNAME", "http://keycloak")
+        .WithEnvironment("KC_HOSTNAME_STRICT", "true");
 }
 
 var typesense = builder.AddContainer("typesense", "typesense/typesense", "30.1")
@@ -87,6 +84,7 @@ var accountService = builder.AddProject<Projects.AccountService>("account-svc")
     .WithEnvironment("AvatarOptions__BucketName", accountAvatarBucket)
     .WithEnvironment("KeycloakOptions__Realm", "makerverse")
     .WithEnvironment("KeycloakOptions__PublicClientId", "makerverse")
+    .WithEnvironment("KeycloakOptions__InternalBaseUrl", "http://keycloak")
     .WithEnvironment("KeycloakAdminOptions__ClientId", "makerverse-account-service")
     .WithEnvironment("KeycloakAdminOptions__ClientSecret", accountServiceClientSecret)
     .WithEnvironment("VIRTUAL_HOST", hostId)

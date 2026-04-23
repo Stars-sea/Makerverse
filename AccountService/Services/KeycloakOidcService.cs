@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using AccountService.DTOs.Auth;
 using AccountService.Options;
@@ -15,6 +14,7 @@ public sealed class KeycloakOidcService(
 
     private string Realm => options.Value.Realm;
     private string ClientId => options.Value.PublicClientId;
+    private string InternalBaseUrl => options.Value.InternalBaseUrl;
 
     public Task<KeycloakResponse> LoginAsync(TokenRequestDto request, CancellationToken ct = default) {
         Dictionary<string, string> form = new() {
