@@ -9,7 +9,6 @@ using LiveService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Minio.DataModel;
 using Wolverine;
 
 namespace LiveService.Controllers;
@@ -19,7 +18,6 @@ namespace LiveService.Controllers;
 public class LivesController(
     LiveDbContext db,
     LivestreamService livestreamService,
-    LivestreamPersistentService persistentService,
     LivestreamLifecycleWatcherQueue queue,
     IMessageBus bus,
     StreamDescriptorConverter descriptorConverter
@@ -149,13 +147,12 @@ public class LivesController(
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
 
-            StreamDescriptor descriptor = ret.Value.Stream;
+            StreamDescriptor descriptor = ret.Value.Descriptor_;
 
-            string  pullUrl    = descriptorConverter.BuildPullUri(live.Id, descriptor.Endpoint);
-            string  pushUrl    = descriptorConverter.BuildPushUri(descriptor);
-            string? passphrase = descriptor.Endpoint.HasPassphrase ? descriptor.Endpoint.Passphrase : null;
+            PlaybackEndpointDto playbackEndpoints = descriptorConverter.BuildPlaybackUri(descriptor);
+            string              ingestEndpoint    = descriptorConverter.BuildIngestUri(descriptor);
 
-            return new LivestreamEndpointDto(pushUrl, pullUrl, passphrase);
+            return new LivestreamEndpointDto(ingestEndpoint, playbackEndpoints);
         }
 
         if (dto.Status == "stop") {
@@ -167,88 +164,25 @@ public class LivesController(
         return BadRequest($"Invalid status value '{dto.Status}'.");
     }
 
-    [Authorize]
     [HttpGet("{id}/endpoint")]
-    [ProducesResponseType(typeof(LivestreamEndpointDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(VodEndpointDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> GetLiveEndpoint(string id) {
+    public async Task<ActionResult<LivestreamEndpointDto>> GetLiveEndpoint(string id) {
         if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
 
         string? userId  = User.FindFirstValue(ClaimTypes.NameIdentifier);
         bool    isOwner = live.StreamerId == userId;
 
         if (live.Status is not (LiveStatus.Starting or LiveStatus.Started))
-            return Ok(new VodEndpointDto(
-                Url: $"/lives/{live.Id}/segments"
-            ));
+            return NotFound();
 
         var ret = await livestreamService.GetStreamInfoAsync(live.Id);
-        if (ret.IsError) // TODO: Add telemetry of the error for debugging
+        if (ret.IsError)// TODO: Add telemetry of the error for debugging
             return ret.FirstError.ToActionResult();
 
-        StreamDescriptor descriptor = ret.Value.Stream;
+        StreamDescriptor descriptor = ret.Value.Descriptor_;
 
-        string  pullUrl    = descriptorConverter.BuildPullUri(live.Id, descriptor.Endpoint);
-        string? pushUrl    = isOwner ? descriptorConverter.BuildPushUri(descriptor) : null;
-        string? passphrase = isOwner && descriptor.Endpoint.HasPassphrase ? descriptor.Endpoint.Passphrase : null;
-        return Ok(new LivestreamEndpointDto(pushUrl, pullUrl, passphrase));
-    }
-
-    #endregion
-
-    #region Live viewing (for viewers)
-
-    // TODO:
-    // - Generate the HLS manifest file for the live stream (LiveTerminateHandler)
-    // - Preview live stream (generate preview image from the first segment or use a placeholder image)
-    [HttpGet("{id}/segments")]
-    public async Task<ActionResult<List<string>>> ListLiveSegments(string id) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
-        if (live.Status is LiveStatus.Created or LiveStatus.Starting)
-            return BadRequest("Live is not started yet.");
-
-        List<string> segments = [];
-        await foreach (string segment in persistentService.ListSegmentsAsync(id)) {
-            segments.Add(segment);
-        }
-        return segments;
-    }
-
-    [HttpGet("{id}/segments/{num:int}")]
-    [HttpGet("{id}/segments/segment_{num:int}.ts")]
-    public async Task GetLiveSegment(string id, int num) {
-        if (await db.Lives.FindAsync(id) is not {} live) {
-            Response.StatusCode = 404;
-            return;
-        }
-        if (live.Status is LiveStatus.Created or LiveStatus.Starting) {
-            Response.StatusCode = 400;
-            await Response.WriteAsync("Live is not started yet.");
-            return;
-        }
-
-        var statRet = await persistentService.GetSegmentStatAsync(id, num);
-        if (statRet.IsError) {
-            Response.StatusCode = 404;
-            await Response.WriteAsJsonAsync(statRet.Errors);
-            return;
-        }
-
-        ObjectStat stat = statRet.Value;
-
-        Response.ContentType          = "video/MP2T";
-        Response.ContentLength        = stat.Size;
-        Response.Headers.AcceptRanges = "bytes";
-        Response.Headers.ETag         = stat.ETag;
-        Response.Headers.LastModified = stat.LastModified.ToString("R");
-        Response.Headers.CacheControl = "public, max-age=600";// Cache for 10 mins
-
-        var ret = await persistentService.GetSegmentAsync(id, num, Response.Body);
-        if (ret.IsError) {
-            Response.StatusCode = 404;
-            await Response.WriteAsJsonAsync(ret.Errors);
-        }
+        PlaybackEndpointDto pullUrl = descriptorConverter.BuildPlaybackUri(descriptor);
+        string?             pushUrl = isOwner ? descriptorConverter.BuildIngestUri(descriptor) : null;
+        return new LivestreamEndpointDto(pushUrl, pullUrl);
     }
 
     #endregion

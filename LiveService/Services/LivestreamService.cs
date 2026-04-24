@@ -159,7 +159,7 @@ public class LivestreamService(
 
         var stream = call.ResponseStream.ReadAllAsync(ct);
         await foreach (WatchLivestreamResponse response in stream) {
-            yield return response.Stream;
+            yield return response.Status;
         }
     }
 }

@@ -14,29 +14,33 @@ public static class LivestreamServiceBuilderExtensions {
     public static IResourceBuilder<ContainerResource> AddLivestreamService(
         this IDistributedApplicationBuilder builder,
         string name,
-        IResourceBuilder<ParameterResource> rtmpAppname,
+        IResourceBuilder<ParameterResource> rtmpAppName,
         IResourceBuilder<ParameterResource> bucketName,
         string dockerfilePath = "../livestream-rs",
         int grpcPort = 50051,
         int rtmpPort = 1936,
+        int rtmpTtl = 30,
+        bool httpFlvEnabled = true,
+        int httpFlvPort = 8080,
         Range? srtPorts = null,
-        uint duration = 10,
-        int publishPort = 1935
+        uint duration = 10
     ) {
         srtPorts ??= 4000..4100;
 
         var container = builder.AddDockerfile(name, dockerfilePath)
             .WithOtlpExporter(OtlpProtocol.Grpc)
-            .WithEnvironment("GRPC_PORT", grpcPort.ToString())
-            .WithEnvironment("RTMP_PORT", rtmpPort.ToString())
-            .WithEnvironment("SRT_PORTS", RangeToString(srtPorts.Value))
-            .WithEnvironment("PERSISTENCE_DURATION", duration.ToString())
-            .WithEnvironment("PUBLISH_PORT", publishPort.ToString())
-            .WithEnvironment("RTMP_APPNAME", rtmpAppname)
+            .WithEnvironment("GRPC__PORT", grpcPort.ToString())
+            .WithEnvironment("RTMP__PORT", rtmpPort.ToString())
+            .WithEnvironment("RTMP__APP_NAME", rtmpAppName)
+            .WithEnvironment("RTMP__SESSION_TTL_SECS", rtmpTtl.ToString())
+            .WithEnvironment("HTTP_FLV__ENABLED", httpFlvEnabled.ToString())
+            .WithEnvironment("HTTP_FLV__PORT", httpFlvPort.ToString())
+            .WithEnvironment("SRT__PORTS", RangeToString(srtPorts.Value))
+            .WithEnvironment("PERSISTENCE__DURATION", duration.ToString())
             .WithEnvironment("MINIO_BUCKET", bucketName)
             .WithEndpoint(port: grpcPort, targetPort: grpcPort, scheme: "http", name: "grpc")
-            .WithEndpoint(port: rtmpPort, targetPort: rtmpPort, scheme: "rtmp", name: "rtmp-ingest")
-            .WithEndpoint(port: publishPort, targetPort: publishPort, scheme: "rtmp", name: "rtmp-publish");
+            .WithEndpoint(port: rtmpPort, targetPort: rtmpPort, scheme: "rtmp", name: "rtmp")
+            .WithEndpoint(port: httpFlvPort, targetPort: httpFlvPort, scheme: "http", name: "http-flv");
 
         (int offset, int length) = srtPorts.Value.GetOffsetAndLength(int.MaxValue);
         foreach (int srtPort in Enumerable.Range(offset, length)) {

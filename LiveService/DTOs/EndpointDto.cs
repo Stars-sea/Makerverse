@@ -1,11 +1,11 @@
 ﻿namespace LiveService.DTOs;
 
 public record LivestreamEndpointDto(
-    string? PushUrl,
-    string PullUrl,
-    string? Passphrase
+    string? IngestUrl,
+    PlaybackEndpointDto PlaybackEndpoints
 );
 
-public record VodEndpointDto(
-    string Url
+public record PlaybackEndpointDto(
+    string RtmpUrl,
+    string? HttpFlvUrl = null
 );

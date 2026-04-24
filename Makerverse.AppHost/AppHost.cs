@@ -65,7 +65,7 @@ var minio = builder.AddMinioContainer("minio")
 
 var livestreamService = builder.AddLivestreamService(
         "livestream-svc",
-        rtmpAppname: livestreamAppname,
+        rtmpAppName: livestreamAppname,
         bucketName: livestreamBucket,
         grpcPort: 50050,
         srtPorts: 40000..40100
