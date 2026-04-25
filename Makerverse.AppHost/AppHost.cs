@@ -1,5 +1,7 @@
-using Makerverse.AppHost;
+using Makerverse.AppHost.ApplicationModel;
 using Microsoft.Extensions.Hosting;
+
+// ReSharper disable UnusedVariable
 
 #pragma warning disable ASPIRECOMPUTE003
 #pragma warning disable ASPIREPIPELINES003
@@ -7,11 +9,10 @@ using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-var typesenseApiKey            = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "typesense-api-key");
 var livestreamBucket           = builder.AddParameter("livestream-bucket", value: "videos", publishValueAsDefault: true);
-var livestreamAppname          = builder.AddParameter("livestream-appname", value: "lives", publishValueAsDefault: true);
 var accountAvatarBucket        = builder.AddParameter("account-avatar-bucket", value: "avatars", publishValueAsDefault: true);
 var accountServiceClientSecret = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "account-service-client-secret");
+var typesenseApiKey            = ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, "typesense-api-key");
 
 var hostId   = builder.AddParameter("host-id", value: "id.makerverse.local");
 var hostApi  = builder.AddParameter("host-api", value: "api.makerverse.local");
@@ -65,10 +66,7 @@ var minio = builder.AddMinioContainer("minio")
 
 var livestreamService = builder.AddLivestreamService(
         "livestream-svc",
-        rtmpAppName: livestreamAppname,
-        bucketName: livestreamBucket,
-        grpcPort: 50050,
-        srtPorts: 40000..40100
+        bucketName: livestreamBucket
     )
     .WithContainerRegistry(registry)
     .WithRemoteImageTag("latest")
@@ -104,7 +102,7 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithReference(rabbitmq)
     .WithReference(redis)
     .WithReference(minio)
-    .WithReference(livestreamService.GetEndpoint("grpc"))
+    .WithReference(livestreamService)
     .WaitFor(keycloak)
     .WaitFor(liveDb)
     .WaitFor(rabbitmq)
