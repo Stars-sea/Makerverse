@@ -66,11 +66,14 @@ var minio = builder.AddMinioContainer("minio")
 
 var livestreamService = builder.AddLivestreamService(
         "livestream-svc",
-        bucketName: livestreamBucket
+        bucketName: livestreamBucket,
+        httpFlvPort: 8081
     )
     .WithContainerRegistry(registry)
     .WithRemoteImageTag("latest")
     .WithEnvironment("RUST_LOG", "info")
+    .WithEnvironment("VIRTUAL_HOST", hostLive)
+    .WithEnvironment("VIRTUAL_PORT", "8081")
     .WithReference(minio)
     .WaitFor(minio);
 

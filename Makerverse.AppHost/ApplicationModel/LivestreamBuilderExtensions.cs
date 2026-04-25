@@ -32,7 +32,7 @@ public static class LivestreamBuilderExtensions {
         );
 
         return builder.AddResource(resource)
-            .WithImage(name)
+            .WithImage("livestream-svc")
             .WithDockerfile(dockerfilePath)
             .WithOtlpExporter()
             .WithEndpoint(
