@@ -7,11 +7,10 @@ using Wolverine;
 namespace LiveService.Services;
 
 public class LivestreamLifecycleWatcher(
-    IServiceProvider services,
+    IServiceProvider                    services,
     ILogger<LivestreamLifecycleWatcher> logger,
-    LivestreamLifecycleWatcherQueue queue
+    LivestreamLifecycleWatcherQueue     queue
 ) : BackgroundService {
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
         logger.LogInformation("LivestreamLifecycleWatcher started.");
         await ProcessQueueAsync(stoppingToken);
@@ -21,7 +20,7 @@ public class LivestreamLifecycleWatcher(
         while (!ct.IsCancellationRequested) {
             string liveId = await queue.DequeueAsync(ct);
 
-            CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             _ = WatchLifecycleAsync(liveId, cts.Token);
         }
     }
@@ -30,19 +29,19 @@ public class LivestreamLifecycleWatcher(
         try {
             await using AsyncServiceScope scope = services.CreateAsyncScope();
 
-            LivestreamService livestreamService = scope.ServiceProvider.GetService<LivestreamService>()!;
-            LiveDbContext     dbContext         = scope.ServiceProvider.GetService<LiveDbContext>()!;
-            IMessageBus       bus               = scope.ServiceProvider.GetService<IMessageBus>()!;
+            var livestreamService = scope.ServiceProvider.GetService<LivestreamService>()!;
+            var dbContext         = scope.ServiceProvider.GetService<LiveDbContext>()!;
+            var bus               = scope.ServiceProvider.GetService<IMessageBus>()!;
 
-            Live? live = await dbContext.Lives.FindAsync([liveId], cancellationToken: ct);
+            Live? live = await dbContext.Lives.FindAsync([liveId], ct);
             if (live == null) {
                 logger.LogWarning("LivestreamLifecycleWatcher could not find Live {LiveId}, exiting.", liveId);
                 return;
             }
 
-            var statusStream = livestreamService.WatchSessionStatusAsync(liveId, ct);
+            IAsyncEnumerable<SessionStatus> statusStream = livestreamService.WatchSessionStatusAsync(liveId, ct);
 
-            SessionStatus previousStatus = SessionStatus.Pending;
+            var previousStatus = SessionStatus.Pending;
             await foreach (SessionStatus status in statusStream) {
                 if (previousStatus == status) continue;
 
@@ -55,16 +54,14 @@ public class LivestreamLifecycleWatcher(
                 };
 
                 switch (status) {
-                    case SessionStatus.Connected:
-                    {
+                    case SessionStatus.Connected: {
                         live.StartedAt = DateTime.UtcNow;
 
                         bool isValidTransition = previousStatus is SessionStatus.Connecting or SessionStatus.Pending;
                         await bus.PublishAsync(new LiveConnected(liveId, isValidTransition));
                         break;
                     }
-                    case SessionStatus.Disconnected:
-                    {
+                    case SessionStatus.Disconnected: {
                         live.StoppedAt ??= DateTime.UtcNow;
 
                         bool isValidTransition = previousStatus == SessionStatus.Connected;

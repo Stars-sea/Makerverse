@@ -14,11 +14,10 @@ namespace ActivityService.Controllers;
 [ApiController]
 [Route("[controller]")]
 public class ActivitiesController(
-    TagService tagService,
+    TagService        tagService,
     ActivityDbContext db,
-    IMessageBus bus
+    IMessageBus       bus
 ) : ControllerBase {
-
     #region Activity Region
 
     [Authorize]
@@ -35,7 +34,7 @@ public class ActivitiesController(
             Title        = dto.Title,
             Content      = dto.Content,
             TagSlugs     = dto.Tags,
-            LinkedLiveId = dto.LinkedLiveId,
+            LinkedLiveId = dto.LinkedLiveId
         };
         db.Activities.Add(activity);
         await db.SaveChangesAsync();
@@ -60,7 +59,7 @@ public class ActivitiesController(
 
     [HttpGet]
     public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetActivities() {
-        var activities = await db.Activities
+        List<SimplifiedActivityResponseDto> activities = await db.Activities
             .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
             .Select(x => SimplifiedActivityResponseDto.FromModel(x))
             .ToListAsync();
@@ -69,7 +68,7 @@ public class ActivitiesController(
 
     [HttpGet("publisher/{publisherId}")]
     public async Task<ActionResult<List<SimplifiedActivityResponseDto>>> GetActivitiesByPublisher(string publisherId) {
-        var activities = await db.Activities
+        List<SimplifiedActivityResponseDto> activities = await db.Activities
             .Where(x => x.PublisherId == publisherId)
             .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
             .Select(x => SimplifiedActivityResponseDto.FromModel(x))
@@ -183,7 +182,7 @@ public class ActivitiesController(
         Activity? activity = await db.Activities.FindAsync(activityId);
         if (activity is null) return NotFound();
 
-        var comments = await db.Comments
+        List<CommentResponseDto> comments = await db.Comments
             .Where(c => c.ActivityId == activityId)
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => CommentResponseDto.FromModel(c))
@@ -232,5 +231,4 @@ public class ActivitiesController(
     }
 
     #endregion
-
 }

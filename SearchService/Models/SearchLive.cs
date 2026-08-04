@@ -3,15 +3,11 @@
 namespace SearchService.Models;
 
 public class SearchLive {
-    [JsonPropertyName("id")]
-    public required string Id { get; set; }
+    [JsonPropertyName("id")] public required string Id { get; set; }
 
-    [JsonPropertyName("title")]
-    public required string Title { get; set; }
+    [JsonPropertyName("title")] public required string Title { get; set; }
 
-    [JsonPropertyName("createdAt")]
-    public long CreatedAt { get; set; }
-    
-    [JsonPropertyName("streamerId")]
-    public required string StreamerId { get; set; }
+    [JsonPropertyName("createdAt")] public long CreatedAt { get; set; }
+
+    [JsonPropertyName("streamerId")] public required string StreamerId { get; set; }
 }

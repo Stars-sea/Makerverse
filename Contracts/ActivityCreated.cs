@@ -1,10 +1,10 @@
 ﻿namespace Contracts;
 
 public record ActivityCreated(
-    string ActivityId,
-    string Title,
-    string Content,
+    string   ActivityId,
+    string   Title,
+    string   Content,
     string[] Tags,
     DateTime CreatedAt,
-    string PublisherId
+    string   PublisherId
 );

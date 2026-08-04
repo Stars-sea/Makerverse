@@ -1,21 +1,21 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Common.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Common;
 
 public static class AuthExtensions {
     private const string KeycloakAuthenticationSectionName = "KeycloakAuthentication";
-    private const string KeycloakServiceHttpKey = "services:keycloak:http:0";
-    private const string KeycloakServiceHttpsKey = "services:keycloak:https:0";
-    private const string KeycloakServiceLegacyHttpKey = "KEYCLOAK_HTTP";
+    private const string KeycloakServiceHttpKey            = "services:keycloak:http:0";
+    private const string KeycloakServiceHttpsKey           = "services:keycloak:https:0";
+    private const string KeycloakServiceLegacyHttpKey      = "KEYCLOAK_HTTP";
 
     public static IServiceCollection AddKeycloakAuthentication(
         this IServiceCollection services,
-        IConfiguration configuration
+        IConfiguration          configuration
     ) {
         services.Configure<KeycloakAuthenticationOptions>(configuration.GetSection(KeycloakAuthenticationSectionName));
 
@@ -39,12 +39,12 @@ public static class AuthExtensions {
         // injected by WithReference(keycloak), so no URL is hardcoded here.
         services.AddAuthentication()
             .AddKeycloakJwtBearer(
-                serviceName: "keycloak",
-                realm: "makerverse",
+                "keycloak",
+                "makerverse",
                 options => {
                     // Dev runs serve Keycloak over plain HTTP.
                     options.RequireHttpsMetadata = false;
-                    options.Audience = "makerverse";
+                    options.Audience             = "makerverse";
                 }
             );
 
@@ -54,7 +54,7 @@ public static class AuthExtensions {
     private sealed class MissingKeycloakAuthenticationConfigurationStartupFilter : IStartupFilter {
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) {
             return app => {
-                var logger = app.ApplicationServices
+                ILogger logger = app.ApplicationServices
                     .GetRequiredService<ILoggerFactory>()
                     .CreateLogger(typeof(AuthExtensions));
                 logger.LogWarning(

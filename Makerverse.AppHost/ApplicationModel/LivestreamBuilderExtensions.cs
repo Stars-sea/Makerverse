@@ -2,23 +2,28 @@ namespace Makerverse.AppHost.ApplicationModel;
 
 public static class LivestreamBuilderExtensions {
     public static IResourceBuilder<LivestreamResource> AddLivestreamService(
-        this IDistributedApplicationBuilder builder,
-        string name,
-        int grpcPort = 50050,
-        int rtmpPort = 1935,
-        int httpFlvPort = 8080,
-        int rtspPort = 8554,
-        IResourceBuilder<ParameterResource>? bucketName = null,
-        IResourceBuilder<ParameterResource>? rtmpTtl = null,
-        IResourceBuilder<ParameterResource>? duration = null,
-        string dockerfilePath = "../livestream-rs"
+        this IDistributedApplicationBuilder  builder,
+        string                               name,
+        int                                  grpcPort       = 50050,
+        int                                  rtmpPort       = 1935,
+        int                                  httpFlvPort    = 8080,
+        int                                  rtspPort       = 8554,
+        IResourceBuilder<ParameterResource>? bucketName     = null,
+        IResourceBuilder<ParameterResource>? rtmpTtl        = null,
+        IResourceBuilder<ParameterResource>? duration       = null,
+        string                               dockerfilePath = "../livestream-rs"
     ) {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(name);
 
-        var bucket = bucketName ?? builder.AddParameter($"{name}-bucket-name", "videos", true);
-        var ttl    = rtmpTtl ?? builder.AddParameter($"{name}-rtmp-ttl", LivestreamResource.DefaultRtmpTtl.ToString(), true);
-        var dur    = duration ?? builder.AddParameter($"{name}-duration", LivestreamResource.DefaultDuration.ToString(), true);
+        IResourceBuilder<ParameterResource> bucket =
+            bucketName ?? builder.AddParameter($"{name}-bucket-name", "videos", true);
+        IResourceBuilder<ParameterResource> ttl = rtmpTtl ??
+                                                  builder.AddParameter($"{name}-rtmp-ttl",
+                                                      LivestreamResource.DefaultRtmpTtl.ToString(), true);
+        IResourceBuilder<ParameterResource> dur = duration ??
+                                                  builder.AddParameter($"{name}-duration",
+                                                      LivestreamResource.DefaultDuration.ToString(), true);
 
         LivestreamResource resource = new(
             name,
@@ -33,31 +38,31 @@ public static class LivestreamBuilderExtensions {
             .WithDockerfile(dockerfilePath)
             .WithOtlpExporter()
             .WithEndpoint(
-                port: grpcPort,
-                targetPort: grpcPort,
-                scheme: "http",
-                name: LivestreamResource.GrpcEndpointName,
-                env: "GRPC__PORT")
+                grpcPort,
+                grpcPort,
+                "http",
+                LivestreamResource.GrpcEndpointName,
+                "GRPC__PORT")
             .WithEndpoint(
-                port: rtmpPort,
-                targetPort: rtmpPort,
-                scheme: "rtmp",
-                name: LivestreamResource.RtmpEndpointName,
-                env: "RTMP__PORT",
+                rtmpPort,
+                rtmpPort,
+                "rtmp",
+                LivestreamResource.RtmpEndpointName,
+                "RTMP__PORT",
                 isExternal: true)
             .WithEndpoint(
-                port: httpFlvPort,
-                targetPort: httpFlvPort,
-                scheme: "http",
-                name: LivestreamResource.HttpFlvEndpointName,
-                env: "HTTP_FLV__PORT",
+                httpFlvPort,
+                httpFlvPort,
+                "http",
+                LivestreamResource.HttpFlvEndpointName,
+                "HTTP_FLV__PORT",
                 isExternal: true)
             .WithEndpoint(
-                port: rtspPort,
-                targetPort: rtspPort,
-                scheme: "rtsp",
-                name: LivestreamResource.RtspEndpointName,
-                env: "RTSP__PORT",
+                rtspPort,
+                rtspPort,
+                "rtsp",
+                LivestreamResource.RtspEndpointName,
+                "RTSP__PORT",
                 isExternal: true);
     }
 }

@@ -2,5 +2,5 @@
 
 public record LiveConnected(
     string LiveId,
-    bool IsValidTransition
+    bool   IsValidTransition
 );

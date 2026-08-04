@@ -1,8 +1,8 @@
 ﻿namespace Contracts;
 
 public record LiveCreated(
-    string LiveId,
-    string Title,
+    string   LiveId,
+    string   Title,
     DateTime CreatedAt,
-    string StreamerId
+    string   StreamerId
 );

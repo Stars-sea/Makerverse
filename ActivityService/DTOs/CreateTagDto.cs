@@ -4,7 +4,7 @@ using ActivityService.Validators;
 namespace ActivityService.DTOs;
 
 public record CreateTagDto(
-    [Required] string Name,
+    [Required]                    string Name,
     [Required] [TagSlugValidator] string Slug,
-    [Required] string Description
+    [Required]                    string Description
 );

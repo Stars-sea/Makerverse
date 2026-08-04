@@ -1,7 +1,8 @@
-using Aspire.Hosting.ApplicationModel;
 using Makerverse.AppHost.ApplicationModel;
 using Microsoft.Extensions.Hosting;
 
+// ReSharper disable SuggestVarOrType_SimpleTypes
+// ReSharper disable SuggestVarOrType_Elsewhere
 // ReSharper disable UnusedVariable
 
 #pragma warning disable ASPIRECOMPUTE003

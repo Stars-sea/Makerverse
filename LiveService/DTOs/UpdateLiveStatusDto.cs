@@ -4,5 +4,5 @@ namespace LiveService.DTOs;
 
 public record UpdateLiveStatusDto(
     [UpdateStatusValidator] string Status,
-    string? Protocol = null
+    string?                        Protocol = null
 );

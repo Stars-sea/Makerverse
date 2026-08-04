@@ -6,14 +6,14 @@ namespace ActivityService.Services;
 
 public class TagService(
     IConnectionMultiplexer redis,
-    ActivityDbContext db,
-    ILogger<TagService> logger
+    ActivityDbContext      db,
+    ILogger<TagService>    logger
 ) {
     private const string CacheKey = "Tags";
 
-    private IDatabase Cache => redis.GetDatabase();
-
     private static readonly SemaphoreSlim Semaphore = new(1, 1);
+
+    private IDatabase Cache => redis.GetDatabase();
 
     private async ValueTask<IEnumerable<string>> UpdateTagsAsync() {
         List<string>? tags = null;
@@ -26,9 +26,9 @@ public class TagService(
 
             IBatch batch = Cache.CreateBatch();
 
-            var delTask = batch.KeyDeleteAsync(CacheKey);
-            var addTask = batch.SetAddAsync(CacheKey, tags.Select(s => (RedisValue)s).ToArray());
-            var expTask = batch.KeyExpireAsync(CacheKey, TimeSpan.FromMinutes(10));
+            Task<bool> delTask = batch.KeyDeleteAsync(CacheKey);
+            Task<long> addTask = batch.SetAddAsync(CacheKey, tags.Select(s => (RedisValue)s).ToArray());
+            Task<bool> expTask = batch.KeyExpireAsync(CacheKey, TimeSpan.FromMinutes(10));
 
             batch.Execute();
 
@@ -73,8 +73,8 @@ public class TagService(
         if (!await Cache.KeyExistsAsync(CacheKey))
             await GetOrUpdateTagsAsync();
 
-        var    redisValues = tagArray.Select(s => (RedisValue)s).ToArray();
-        bool[] results     = await Cache.SetContainsAsync(CacheKey, redisValues);
+        RedisValue[] redisValues = tagArray.Select(s => (RedisValue)s).ToArray();
+        bool[]       results     = await Cache.SetContainsAsync(CacheKey, redisValues);
 
         return results.All(r => r);
     }

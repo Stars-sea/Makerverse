@@ -1,18 +1,20 @@
-﻿namespace ActivityService.DTOs;
+﻿using ActivityService.Models;
+
+namespace ActivityService.DTOs;
 
 public record ActivityResponseDto(
-    string Id,
-    string PublisherId,
-    string? LinkedLiveId,
-    string Title,
-    string Content,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt,
-    ulong Votes,
-    ulong ViewCount,
+    string       Id,
+    string       PublisherId,
+    string?      LinkedLiveId,
+    string       Title,
+    string       Content,
+    DateTime     CreatedAt,
+    DateTime?    UpdatedAt,
+    ulong        Votes,
+    ulong        ViewCount,
     List<string> TagSlugs
 ) {
-    public static ActivityResponseDto FromModel(Models.Activity activity) {
+    public static ActivityResponseDto FromModel(Activity activity) {
         return new ActivityResponseDto(
             activity.Id,
             activity.PublisherId,
@@ -29,22 +31,22 @@ public record ActivityResponseDto(
 }
 
 public record SimplifiedActivityResponseDto(
-    string Id,
-    string PublisherId,
-    string Title,
-    string ShortContent,
-    DateTime CreatedOrUpdatedAt,
-    ulong Votes,
-    ulong ViewCount,
+    string       Id,
+    string       PublisherId,
+    string       Title,
+    string       ShortContent,
+    DateTime     CreatedOrUpdatedAt,
+    ulong        Votes,
+    ulong        ViewCount,
     List<string> TagSlugs
 ) {
     private const int MaxContentLength = 100;
 
-    public static SimplifiedActivityResponseDto FromModel(Models.Activity activity) {
+    public static SimplifiedActivityResponseDto FromModel(Activity activity) {
         string shortContent = activity.Content.Length > MaxContentLength
             ? activity.Content[..MaxContentLength] + "..."
             : activity.Content;
-        
+
         return new SimplifiedActivityResponseDto(
             activity.Id,
             activity.PublisherId,

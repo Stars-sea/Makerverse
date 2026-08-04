@@ -6,7 +6,7 @@ using LiveService.Services;
 using Microsoft.EntityFrameworkCore;
 using Wolverine.RabbitMQ;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
@@ -44,12 +44,10 @@ builder.Services.AddSingleton<LivestreamLifecycleWatcherQueue>();
 builder.Services.AddSingleton<StreamDescriptorConverter>();
 builder.Services.Configure<LivestreamOptions>(builder.Configuration.GetSection("LivestreamOptions"));
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) {
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseCors(CorsExtensions.TauriCorsPolicyName);
 app.UseAuthentication();
@@ -60,7 +58,7 @@ app.MapDefaultEndpoints();
 
 using (IServiceScope scope = app.Services.CreateScope()) {
     try {
-        LiveDbContext context = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<LiveDbContext>();
         await context.Database.MigrateAsync();
     }
     catch (Exception ex) {

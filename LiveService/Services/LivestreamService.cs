@@ -8,25 +8,22 @@ using LiveService.Protos;
 namespace LiveService.Services;
 
 public class LivestreamService(
-    LiveDbContext db,
+    LiveDbContext               db,
     Livestream.LivestreamClient grpc
 ) {
-
     public async Task<ErrorOr<StartLivestreamResponse>> StartLivestreamAsync(
-        string liveId,
-        InputProtocol protocol,
+        string            liveId,
+        InputProtocol     protocol,
         CancellationToken ct = default
     ) {
-        if (await db.Lives.FindAsync([liveId], ct) is not {} live) {
+        if (await db.Lives.FindAsync([liveId], ct) is not { } live)
             return Error.NotFound("LiveNotFound", $"Live with id {liveId} not found.");
-        }
 
-        if (live.Status != LiveStatus.Created) {
+        if (live.Status != LiveStatus.Created)
             return Error.Conflict(
                 "LiveInvalidStatus",
                 $"Live with id {liveId} is not in a valid status to start. Current status: {live.Status}"
             );
-        }
 
         StartLivestreamResponse? resp;
         try {
@@ -52,19 +49,17 @@ public class LivestreamService(
     }
 
     public async Task<Error?> StopLivestreamAsync(
-        string liveId,
+        string            liveId,
         CancellationToken ct = default
     ) {
-        if (await db.Lives.FindAsync([liveId], ct) is not {} live) {
+        if (await db.Lives.FindAsync([liveId], ct) is not { } live)
             return Error.NotFound("LiveNotFound", $"Live with id {liveId} not found.");
-        }
 
-        if (live.Status != LiveStatus.Started) {
+        if (live.Status != LiveStatus.Started)
             return Error.Conflict(
                 "LiveInvalidStatus",
                 $"Live with id {liveId} is not in a valid status to stop. Current status: {live.Status}"
             );
-        }
 
         StopLivestreamResponse? resp;
         try {
@@ -82,14 +77,13 @@ public class LivestreamService(
             );
         }
 
-        if (!resp.IsSuccess) {
+        if (!resp.IsSuccess)
             return Error.Failure(
                 "LivestreamStopFailed",
                 $"Livestream service failed to stop livestream for live {liveId}."
             );
-        }
 
-        live.Status = LiveStatus.Stopped;
+        live.Status    =   LiveStatus.Stopped;
         live.StoppedAt ??= DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
 
@@ -97,7 +91,7 @@ public class LivestreamService(
     }
 
     public async Task<ErrorOr<GetLivestreamInfoResponse>> GetStreamInfoAsync(
-        string liveId,
+        string            liveId,
         CancellationToken ct = default
     ) {
         try {
@@ -133,23 +127,21 @@ public class LivestreamService(
     }
 
     /// <summary>
-    /// <para>Watches the livestream session status for the specified live and yields updates as they come in.</para>
-    /// <para>For use by <c>LivestreamLifecycleWatcher</c> only.</para>
+    ///     <para>Watches the livestream session status for the specified live and yields updates as they come in.</para>
+    ///     <para>For use by <c>LivestreamLifecycleWatcher</c> only.</para>
     /// </summary>
     public async IAsyncEnumerable<SessionStatus> WatchSessionStatusAsync(
-        string liveId,
+        string                                     liveId,
         [EnumeratorCancellation] CancellationToken ct = default
     ) {
-        var call = grpc.WatchLivestream(
+        AsyncServerStreamingCall<WatchLivestreamResponse> call = grpc.WatchLivestream(
             new WatchLivestreamRequest {
                 LiveId = liveId
             },
             cancellationToken: ct
         );
 
-        var stream = call.ResponseStream.ReadAllAsync(ct);
-        await foreach (WatchLivestreamResponse response in stream) {
-            yield return response.Status;
-        }
+        IAsyncEnumerable<WatchLivestreamResponse> stream = call.ResponseStream.ReadAllAsync(ct);
+        await foreach (WatchLivestreamResponse response in stream) yield return response.Status;
     }
 }

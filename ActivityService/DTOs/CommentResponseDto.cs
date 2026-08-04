@@ -1,15 +1,17 @@
-﻿namespace ActivityService.DTOs;
+﻿using ActivityService.Models;
+
+namespace ActivityService.DTOs;
 
 public record CommentResponseDto(
-    string Id,
-    string ActivityId,
-    string PublisherId,
-    string Content,
-    DateTime CreatedAt,
+    string    Id,
+    string    ActivityId,
+    string    PublisherId,
+    string    Content,
+    DateTime  CreatedAt,
     DateTime? UpdatedAt,
-    ulong Votes
+    ulong     Votes
 ) {
-    public static CommentResponseDto FromModel(Models.Comment comment) {
+    public static CommentResponseDto FromModel(Comment comment) {
         return new CommentResponseDto(
             comment.Id,
             comment.ActivityId,

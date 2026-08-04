@@ -3,10 +3,9 @@
 namespace SearchService.Data;
 
 public static class SearchInitializer {
-    
     public const string ActivityCollectionName = "activities";
     public const string LiveCollectionName     = "lives";
-    
+
     public static async Task EnsureIndexesExistsAsync(ITypesenseClient client) {
         await Task.WhenAll(
             EnsureLiveIndexExistsAsync(client),

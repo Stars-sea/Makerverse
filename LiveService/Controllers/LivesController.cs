@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Common;
 using Contracts;
+using ErrorOr;
 using LiveService.Data;
 using LiveService.DTOs;
 using LiveService.Models;
@@ -16,13 +17,12 @@ namespace LiveService.Controllers;
 [ApiController]
 [Route("[controller]")]
 public class LivesController(
-    LiveDbContext db,
-    LivestreamService livestreamService,
+    LiveDbContext                   db,
+    LivestreamService               livestreamService,
     LivestreamLifecycleWatcherQueue queue,
-    IMessageBus bus,
-    StreamDescriptorConverter descriptorConverter
+    IMessageBus                     bus,
+    StreamDescriptorConverter       descriptorConverter
 ) : ControllerBase {
-
     #region Live Management (CRUD)
 
     [Authorize]
@@ -33,7 +33,7 @@ public class LivesController(
 
         Live live = new() {
             Title      = dto.Title,
-            StreamerId = userId,
+            StreamerId = userId
         };
         db.Lives.Add(live);
         await db.SaveChangesAsync();
@@ -73,12 +73,12 @@ public class LivesController(
 
     [HttpGet("online")]
     public async Task<ActionResult<List<Live>>> ListOnlineLives() {
-        var ret = await livestreamService.GetActiveStreamAsync();
+        ErrorOr<IEnumerable<StreamDescriptor>> ret = await livestreamService.GetActiveStreamAsync();
         if (ret.IsError) return ret.FirstError.ToActionResult();
 
         if (!ret.Value.Any()) return Ok(new List<Live>());
 
-        var onlineLives = ret.Value.Select(d => d.LiveId);
+        IEnumerable<string> onlineLives = ret.Value.Select(d => d.LiveId);
 
         return await db.Lives.AsQueryable()
             .Where(live => onlineLives.Contains(live.Id))
@@ -95,7 +95,7 @@ public class LivesController(
     [Authorize]
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateLive(string id, CreateLiveDto dto) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (await db.Lives.FindAsync(id) is not { } live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
@@ -112,7 +112,7 @@ public class LivesController(
     [Authorize]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteLive(string id) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (await db.Lives.FindAsync(id) is not { } live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
@@ -135,7 +135,7 @@ public class LivesController(
     [Authorize]
     [HttpPut("{id}/status")]
     public async Task<ActionResult<LivestreamEndpointDto>> UpdateLiveStatus(string id, UpdateLiveStatusDto dto) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (await db.Lives.FindAsync(id) is not { } live) return NotFound();
 
         string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is null || live.StreamerId != userId) return Forbid();
@@ -144,7 +144,7 @@ public class LivesController(
             InputProtocol protocol = string.Equals(dto.Protocol, "rtsp", StringComparison.OrdinalIgnoreCase)
                 ? InputProtocol.Rtsp
                 : InputProtocol.Rtmp;
-            var ret = await livestreamService.StartLivestreamAsync(live.Id, protocol);
+            ErrorOr<StartLivestreamResponse> ret = await livestreamService.StartLivestreamAsync(live.Id, protocol);
             await queue.QueueWatcherAsync(live.Id);
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
@@ -158,8 +158,8 @@ public class LivesController(
         }
 
         if (dto.Status == "stop") {
-            var ret = await livestreamService.StopLivestreamAsync(live.Id);
-            if (ret is {} err)
+            Error? ret = await livestreamService.StopLivestreamAsync(live.Id);
+            if (ret is { } err)
                 return err.ToActionResult();
             return NoContent();
         }
@@ -169,7 +169,7 @@ public class LivesController(
 
     [HttpGet("{id}/endpoint")]
     public async Task<ActionResult<LivestreamEndpointDto>> GetLiveEndpoint(string id) {
-        if (await db.Lives.FindAsync(id) is not {} live) return NotFound();
+        if (await db.Lives.FindAsync(id) is not { } live) return NotFound();
 
         string? userId  = User.FindFirstValue(ClaimTypes.NameIdentifier);
         bool    isOwner = live.StreamerId == userId;
@@ -177,8 +177,8 @@ public class LivesController(
         if (live.Status is not (LiveStatus.Starting or LiveStatus.Started))
             return NotFound();
 
-        var ret = await livestreamService.GetStreamInfoAsync(live.Id);
-        if (ret.IsError)// TODO: Add telemetry of the error for debugging
+        ErrorOr<GetLivestreamInfoResponse> ret = await livestreamService.GetStreamInfoAsync(live.Id);
+        if (ret.IsError) // TODO: Add telemetry of the error for debugging
             return ret.FirstError.ToActionResult();
 
         StreamDescriptor descriptor = ret.Value.Descriptor_;
@@ -189,5 +189,4 @@ public class LivesController(
     }
 
     #endregion
-
 }

@@ -4,8 +4,8 @@ using System.Threading.Channels;
 namespace LiveService.Services;
 
 public class LivestreamLifecycleWatcherQueue {
-    private readonly Channel<string> _queue;
     private readonly ConcurrentDictionary<string, byte> _pendingOrActive = new();
+    private readonly Channel<string>                    _queue;
 
     public LivestreamLifecycleWatcherQueue(int capacity) {
         BoundedChannelOptions options = new(capacity) {

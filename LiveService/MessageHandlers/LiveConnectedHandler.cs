@@ -1,21 +1,21 @@
 ﻿using Contracts;
+using ErrorOr;
 using LiveService.Services;
 
 namespace LiveService.MessageHandlers;
 
 public class LiveConnectedHandler(
-    LivestreamService livestreamService,
+    LivestreamService             livestreamService,
     ILogger<LiveConnectedHandler> logger
 ) {
-
     public async Task HandleAsync(LiveConnected message) {
         if (message.IsValidTransition) return;
-        
-        logger.LogWarning("Received invalid live connected event for live {LiveId}, terminating the stream", message.LiveId);
-        var ret = await livestreamService.StopLivestreamAsync(message.LiveId);
-        if (ret is not null) {
-            logger.LogError("Failed to stop livestream for live {LiveId} after receiving invalid live connected event", message.LiveId);
-        }
-    }
 
+        logger.LogWarning("Received invalid live connected event for live {LiveId}, terminating the stream",
+            message.LiveId);
+        Error? ret = await livestreamService.StopLivestreamAsync(message.LiveId);
+        if (ret is not null)
+            logger.LogError("Failed to stop livestream for live {LiveId} after receiving invalid live connected event",
+                message.LiveId);
+    }
 }

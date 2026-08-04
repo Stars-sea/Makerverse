@@ -12,9 +12,8 @@ namespace ActivityService.Controllers;
 [Route("[controller]")]
 public class TagsController(
     ActivityDbContext db,
-    TagService tagService
+    TagService        tagService
 ) : ControllerBase {
-
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<Tag>>> GetTags() {
         return await db.Tags.OrderBy(x => x.Name).ToListAsync();
@@ -22,9 +21,8 @@ public class TagsController(
 
     [HttpGet("{slug}")]
     public async Task<ActionResult<Tag>> GetTag(string slug) {
-        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not {} tag) {
+        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not { } tag)
             return NotFound($"Tag with slug '{slug}' not found.");
-        }
 
         return tag;
     }
@@ -32,9 +30,8 @@ public class TagsController(
     [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<ActionResult<Tag>> CreateTag([FromBody] CreateTagDto dto) {
-        if (await db.Tags.AnyAsync(t => t.Slug == dto.Slug)) {
+        if (await db.Tags.AnyAsync(t => t.Slug == dto.Slug))
             return Conflict($"Tag with slug '{dto.Slug}' already exists.");
-        }
 
         Tag tag = new() {
             Name        = dto.Name,
@@ -57,9 +54,8 @@ public class TagsController(
     [Authorize(Roles = "Admin")]
     [HttpDelete("{slug}")]
     public async Task<ActionResult> DeleteTag(string slug) {
-        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not {} tag) {
+        if (await db.Tags.FirstOrDefaultAsync(t => t.Slug == slug) is not { } tag)
             return NotFound($"Tag with slug '{slug}' not found.");
-        }
 
         db.Tags.Remove(tag);
         await db.SaveChangesAsync();
@@ -68,5 +64,4 @@ public class TagsController(
 
         return NoContent();
     }
-
 }

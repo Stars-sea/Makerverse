@@ -12,17 +12,21 @@ namespace LiveService.Services;
 // TODO: Add caching layer to avoid hitting MinIO for every segment request.
 
 public class LivestreamPersistentService(
-    IMinioClient minio,
+    IMinioClient                         minio,
     ILogger<LivestreamPersistentService> logger,
-    IOptions<LivestreamOptions> options
+    IOptions<LivestreamOptions>          options
 ) {
     private string BucketName => options.Value.BucketName;
 
     private string SegmentPrefix => options.Value.SegmentPrefix;
 
-    private string PlaylistObjectName(string id) => $"{SegmentPrefix}/{id}/index.m3u8";
+    private string PlaylistObjectName(string id) {
+        return $"{SegmentPrefix}/{id}/index.m3u8";
+    }
 
-    private string SegmentObjectName(string id, int num) => $"{SegmentPrefix}/{id}/segment_{num:0000}.ts";
+    private string SegmentObjectName(string id, int num) {
+        return $"{SegmentPrefix}/{id}/segment_{num:0000}.ts";
+    }
 
     private async Task<ErrorOr<ObjectStat>> GetStatAsync(string name, CancellationToken ct = default) {
         try {
@@ -37,7 +41,8 @@ public class LivestreamPersistentService(
         }
     }
 
-    private async Task<ErrorOr<ObjectStat>> GetObjectAsync(string name, Stream outputStream, CancellationToken ct = default) {
+    private async Task<ErrorOr<ObjectStat>> GetObjectAsync(string name, Stream outputStream,
+        CancellationToken                                         ct = default) {
         try {
             GetObjectArgs args = new GetObjectArgs()
                 .WithBucket(BucketName)
@@ -64,11 +69,13 @@ public class LivestreamPersistentService(
         return await GetStatAsync(PlaylistObjectName(liveId), ct);
     }
 
-    public async Task<ErrorOr<ObjectStat>> GetSegmentStatAsync(string liveId, int segmentNum, CancellationToken ct = default) {
+    public async Task<ErrorOr<ObjectStat>> GetSegmentStatAsync(string liveId, int segmentNum,
+        CancellationToken                                             ct = default) {
         return await GetStatAsync(SegmentObjectName(liveId, segmentNum), ct);
     }
 
-    public async IAsyncEnumerable<string> ListSegmentsAsync(string liveId, [EnumeratorCancellation] CancellationToken ct = default) {
+    public async IAsyncEnumerable<string> ListSegmentsAsync(string liveId,
+        [EnumeratorCancellation] CancellationToken                 ct = default) {
         ListObjectsArgs args = new ListObjectsArgs()
             .WithBucket(BucketName)
             .WithPrefix($"{SegmentPrefix}/{liveId}/");
@@ -81,11 +88,13 @@ public class LivestreamPersistentService(
         }
     }
 
-    public async Task<ErrorOr<ObjectStat>> GetPlaylistAsync(string liveId, Stream outputStream, CancellationToken ct = default) {
+    public async Task<ErrorOr<ObjectStat>> GetPlaylistAsync(string liveId, Stream outputStream,
+        CancellationToken                                          ct = default) {
         return await GetObjectAsync(PlaylistObjectName(liveId), outputStream, ct);
     }
 
-    public async Task<ErrorOr<ObjectStat>> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream, CancellationToken ct = default) {
+    public async Task<ErrorOr<ObjectStat>> GetSegmentAsync(string liveId, int segmentNum, Stream outputStream,
+        CancellationToken                                         ct = default) {
         return await GetObjectAsync(SegmentObjectName(liveId, segmentNum), outputStream, ct);
     }
 
@@ -112,6 +121,7 @@ public class LivestreamPersistentService(
             logger.LogWarning(e, "MinIO error while deleting segments for live {id}: {message}", liveId, e.Message);
             return Error.Failure("Failed to delete some or all segments.");
         }
+
         await minio.RemoveObjectsAsync(args, ct);
         return null;
     }

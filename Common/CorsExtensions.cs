@@ -7,9 +7,7 @@ public static class CorsExtensions {
     public const string TauriCorsPolicyName = "TauriCorsPolicy";
 
     public static IServiceCollection AddTauriCors(this IServiceCollection services) {
-        services.AddCors(options => {
-            options.AddPolicy(TauriCorsPolicyName, ConfigureTauriCorsPolicy);
-        });
+        services.AddCors(options => { options.AddPolicy(TauriCorsPolicyName, ConfigureTauriCorsPolicy); });
         return services;
     }
 

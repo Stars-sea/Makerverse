@@ -1,1 +1,2 @@
-﻿CREATE DATABASE "keycloak-db";
+﻿CREATE
+DATABASE "keycloak-db";

@@ -33,11 +33,12 @@ public sealed class AuthController(KeycloakOidcService oidcService) : Controller
     [HttpGet("userinfo")]
     public async Task<IActionResult> UserInfo(CancellationToken ct) {
         string? authorization = Request.Headers.Authorization;
-        if (string.IsNullOrWhiteSpace(authorization) || !authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(authorization) ||
+            !authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             return Unauthorized();
 
-        string bearerToken = authorization[7..].Trim();
-        KeycloakResponse response = await oidcService.GetUserInfoAsync(bearerToken, ct);
+        string           bearerToken = authorization[7..].Trim();
+        KeycloakResponse response    = await oidcService.GetUserInfoAsync(bearerToken, ct);
         return BuildResponse(response);
     }
 
@@ -46,8 +47,8 @@ public sealed class AuthController(KeycloakOidcService oidcService) : Controller
             return StatusCode(response.StatusCode);
 
         return new ContentResult {
-            StatusCode = response.StatusCode,
-            Content = response.Content,
+            StatusCode  = response.StatusCode,
+            Content     = response.Content,
             ContentType = response.ContentType ?? "application/json"
         };
     }

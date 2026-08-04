@@ -12,8 +12,8 @@ namespace AccountService.Controllers;
 [ApiController]
 [Route("account/users")]
 public sealed class AvatarsController(
-    KeycloakAdminService adminService,
-    AvatarStorageService storageService,
+    KeycloakAdminService  adminService,
+    AvatarStorageService  storageService,
     AccountProfileService profileService
 ) : ControllerBase {
     [Authorize]
@@ -24,20 +24,21 @@ public sealed class AvatarsController(
         if (string.IsNullOrWhiteSpace(userId))
             return BadRequest("Cannot get user details.");
 
-        var userResult = await adminService.GetUserByIdAsync(userId, ct);
+        ErrorOr<KeycloakUserRepresentation> userResult = await adminService.GetUserByIdAsync(userId, ct);
         if (userResult.IsError)
             return userResult.Errors[0].ToActionResult();
 
-        var uploadResult = await storageService.UploadAsync(userId, file, ct);
+        ErrorOr<StoredAvatar> uploadResult = await storageService.UploadAsync(userId, file, ct);
         if (uploadResult.IsError)
             return uploadResult.Errors[0].ToActionResult();
 
-        var updateResult = await adminService.UpdateAvatarAsync(userId, uploadResult.Value, ct);
+        ErrorOr<KeycloakUserRepresentation> updateResult =
+            await adminService.UpdateAvatarAsync(userId, uploadResult.Value, ct);
         if (updateResult.IsError)
             return updateResult.Errors[0].ToActionResult();
 
         Error? cleanupError = await storageService.DeleteOtherVariantsAsync(userId, uploadResult.Value.ObjectKey, ct);
-        if (cleanupError is Error cleanup)
+        if (cleanupError is { } cleanup)
             return cleanup.ToActionResult();
 
         return Ok(profileService.ToAvatarUploadResponse(userId, uploadResult.Value));
@@ -46,13 +47,13 @@ public sealed class AvatarsController(
     [AllowAnonymous]
     [HttpGet("{userId}/avatar")]
     public async Task GetAvatar(string userId, CancellationToken ct) {
-        var storedAvatar = await storageService.FindByUserIdAsync(userId, ct);
+        StoredAvatar? storedAvatar = await storageService.FindByUserIdAsync(userId, ct);
         if (storedAvatar is null) {
             Response.StatusCode = 404;
             return;
         }
 
-        var statResult = await storageService.GetStatAsync(storedAvatar.ObjectKey, ct);
+        ErrorOr<ObjectStat> statResult = await storageService.GetStatAsync(storedAvatar.ObjectKey, ct);
         if (statResult.IsError) {
             Response.StatusCode = 404;
             return;
@@ -66,10 +67,8 @@ public sealed class AvatarsController(
         Response.Headers.LastModified = stat.LastModified.ToString("R");
         Response.Headers.CacheControl = "public, max-age=3600";
 
-        var readError = await storageService.WriteToStreamAsync(storedAvatar.ObjectKey, Response.Body, ct);
-        if (readError is not null) {
-            Response.StatusCode = 404;
-        }
+        Error? readError = await storageService.WriteToStreamAsync(storedAvatar.ObjectKey, Response.Body, ct);
+        if (readError is not null) Response.StatusCode = 404;
     }
 
     [Authorize]
@@ -79,16 +78,16 @@ public sealed class AvatarsController(
         if (string.IsNullOrWhiteSpace(userId))
             return BadRequest("Cannot get user details.");
 
-        var userResult = await adminService.GetUserByIdAsync(userId, ct);
+        ErrorOr<KeycloakUserRepresentation> userResult = await adminService.GetUserByIdAsync(userId, ct);
         if (userResult.IsError)
             return userResult.Errors[0].ToActionResult();
 
-        var updateResult = await adminService.RemoveAvatarAsync(userId, ct);
+        ErrorOr<KeycloakUserRepresentation> updateResult = await adminService.RemoveAvatarAsync(userId, ct);
         if (updateResult.IsError)
             return updateResult.Errors[0].ToActionResult();
 
         Error? deleteError = await storageService.DeleteByUserIdAsync(userId, ct);
-        if (deleteError is Error error)
+        if (deleteError is { } error)
             return error.ToActionResult();
 
         return NoContent();

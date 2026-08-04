@@ -1,5 +1,5 @@
-using ErrorOr;
 using AccountService.Options;
+using ErrorOr;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel;
@@ -9,8 +9,8 @@ using Minio.Exceptions;
 namespace AccountService.Services;
 
 public sealed class AvatarStorageService(
-    IMinioClient minioClient,
-    IOptions<AvatarOptions> options,
+    IMinioClient                  minioClient,
+    IOptions<AvatarOptions>       options,
     ILogger<AvatarStorageService> logger
 ) {
     private static readonly (string ContentType, string Extension)[] AvatarFormats = [
@@ -21,7 +21,8 @@ public sealed class AvatarStorageService(
 
     private string BucketName => options.Value.BucketName;
 
-    public async Task<ErrorOr<StoredAvatar>> UploadAsync(string userId, IFormFile file, CancellationToken ct = default) {
+    public async Task<ErrorOr<StoredAvatar>>
+        UploadAsync(string userId, IFormFile file, CancellationToken ct = default) {
         if (file.Length <= 0)
             return Error.Validation(description: "Avatar file is empty.");
         if (file.Length > options.Value.MaxFileSizeBytes)
@@ -30,7 +31,7 @@ public sealed class AvatarStorageService(
             return Error.Validation(description: "Avatar content type is not allowed.");
 
         string objectKey = BuildObjectKey(userId, file.ContentType);
-        string version   = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var    version   = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
 
         try {
             await EnsureBucketExistsAsync(ct);
@@ -47,15 +48,16 @@ public sealed class AvatarStorageService(
             return new StoredAvatar(objectKey, file.ContentType, file.Length, version);
         }
         catch (MinioException ex) {
-            logger.LogWarning(ex, "MinIO error while uploading avatar for user {userId}: {message}", userId, ex.Message);
+            logger.LogWarning(ex, "MinIO error while uploading avatar for user {userId}: {message}", userId,
+                ex.Message);
             return Error.Failure(description: "Failed to upload avatar.");
         }
     }
 
     public async Task<StoredAvatar?> FindByUserIdAsync(string userId, CancellationToken ct = default) {
         foreach ((string contentType, string extension) in AvatarFormats) {
-            string objectKey  = $"users/{userId}/avatar.{extension}";
-            var    statResult = await GetStatAsync(objectKey, ct);
+            var                 objectKey  = $"users/{userId}/avatar.{extension}";
+            ErrorOr<ObjectStat> statResult = await GetStatAsync(objectKey, ct);
             if (!statResult.IsError)
                 return new StoredAvatar(objectKey, contentType, statResult.Value.Size, string.Empty);
         }
@@ -65,8 +67,8 @@ public sealed class AvatarStorageService(
 
     public async Task<Error?> DeleteByUserIdAsync(string userId, CancellationToken ct = default) {
         foreach ((_, string extension) in AvatarFormats) {
-            string objectKey  = $"users/{userId}/avatar.{extension}";
-            var    statResult = await GetStatAsync(objectKey, ct);
+            var                 objectKey  = $"users/{userId}/avatar.{extension}";
+            ErrorOr<ObjectStat> statResult = await GetStatAsync(objectKey, ct);
             if (statResult.IsError)
                 continue;
 
@@ -78,13 +80,14 @@ public sealed class AvatarStorageService(
         return null;
     }
 
-    public async Task<Error?> DeleteOtherVariantsAsync(string userId, string keepObjectKey, CancellationToken ct = default) {
+    public async Task<Error?> DeleteOtherVariantsAsync(string userId, string keepObjectKey,
+        CancellationToken                                     ct = default) {
         foreach ((_, string extension) in AvatarFormats) {
-            string objectKey = $"users/{userId}/avatar.{extension}";
+            var objectKey = $"users/{userId}/avatar.{extension}";
             if (string.Equals(objectKey, keepObjectKey, StringComparison.Ordinal))
                 continue;
 
-            var statResult = await GetStatAsync(objectKey, ct);
+            ErrorOr<ObjectStat> statResult = await GetStatAsync(objectKey, ct);
             if (statResult.IsError)
                 continue;
 
@@ -104,12 +107,14 @@ public sealed class AvatarStorageService(
             return await minioClient.StatObjectAsync(args, ct);
         }
         catch (MinioException ex) {
-            logger.LogWarning(ex, "MinIO error while getting avatar stat for {objectKey}: {message}", objectKey, ex.Message);
+            logger.LogWarning(ex, "MinIO error while getting avatar stat for {objectKey}: {message}", objectKey,
+                ex.Message);
             return Error.NotFound(description: "Avatar not found.");
         }
     }
 
-    public async Task<Error?> WriteToStreamAsync(string objectKey, Stream outputStream, CancellationToken ct = default) {
+    public async Task<Error?>
+        WriteToStreamAsync(string objectKey, Stream outputStream, CancellationToken ct = default) {
         try {
             GetObjectArgs args = new GetObjectArgs()
                 .WithBucket(BucketName)

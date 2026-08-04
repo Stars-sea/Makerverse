@@ -15,11 +15,12 @@ public sealed class AccountProfileService {
             LastName      = user.LastName,
             AvatarUrl     = string.IsNullOrWhiteSpace(user.Id) ? null : $"/account/users/{user.Id}/avatar",
             AvatarVersion = null,
-            Roles = principal.Claims
-                .Where(claim => claim.Type is ClaimTypes.Role or "roles")
-                .Select(claim => claim.Value)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray()
+            Roles = [
+                .. principal.Claims
+                    .Where(claim => claim.Type is ClaimTypes.Role or "roles")
+                    .Select(claim => claim.Value)
+                    .Distinct(StringComparer.Ordinal)
+            ]
         };
     }
 

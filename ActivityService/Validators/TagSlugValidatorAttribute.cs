@@ -9,7 +9,7 @@ public class TagSlugValidatorAttribute : ValidationAttribute {
             IEnumerable<string> slugs => slugs.All(IsValidSlug),
             _                         => false
         };
-        return isValid 
+        return isValid
             ? ValidationResult.Success
             : new ValidationResult("Invalid tag slug format.");
     }
@@ -18,5 +18,4 @@ public class TagSlugValidatorAttribute : ValidationAttribute {
         return slug.Length is >= 3 and <= 50 &&
                slug.All(c => char.IsLower(c) || char.IsDigit(c) || c == '-');
     }
-
 }

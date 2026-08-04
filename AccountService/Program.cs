@@ -1,8 +1,9 @@
 using AccountService.Options;
 using AccountService.Services;
 using Common;
+using Microsoft.Extensions.Options;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -19,22 +20,20 @@ builder.Services.Configure<KeycloakAdminOptions>(builder.Configuration.GetSectio
 builder.Services.Configure<AvatarOptions>(builder.Configuration.GetSection("AvatarOptions"));
 
 builder.Services.AddHttpClient<KeycloakOidcService>((serviceProvider, client) => {
-    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KeycloakOptions>>().Value;
+    KeycloakOptions options = serviceProvider.GetRequiredService<IOptions<KeycloakOptions>>().Value;
     client.BaseAddress = new Uri(options.InternalBaseUrl);
 });
 builder.Services.AddHttpClient<KeycloakAdminService>((serviceProvider, client) => {
-    var options = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KeycloakOptions>>().Value;
+    KeycloakOptions options = serviceProvider.GetRequiredService<IOptions<KeycloakOptions>>().Value;
     client.BaseAddress = new Uri(options.InternalBaseUrl);
 });
 
 builder.Services.AddScoped<AccountProfileService>();
 builder.Services.AddScoped<AvatarStorageService>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
-if (app.Environment.IsDevelopment()) {
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseCors(CorsExtensions.TauriCorsPolicyName);
 

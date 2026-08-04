@@ -11,7 +11,6 @@ namespace SearchService.Controllers;
 public partial class SearchController(
     ITypesenseClient client
 ) : ControllerBase {
-
     [HttpGet]
     [HttpGet("activities")]
     public async Task<ActionResult<IReadOnlyList<SearchActivity>>> SearchActivityAsync(string query) {
@@ -23,12 +22,12 @@ public partial class SearchController(
         }
 
         SearchParameters searchParameters = new(query, "title,content");
-        if (!string.IsNullOrEmpty(tag)) {
-            searchParameters.FilterBy = $"tags:=[{tag}]";
-        }
-        
+
+        if (!string.IsNullOrEmpty(tag)) searchParameters.FilterBy = $"tags:=[{tag}]";
+
         try {
-            var results = await client.Search<SearchActivity>(SearchInitializer.ActivityCollectionName, searchParameters);
+            SearchResult<SearchActivity> results =
+                await client.Search<SearchActivity>(SearchInitializer.ActivityCollectionName, searchParameters);
             return Ok(results.Hits.Select(hit => hit.Document));
         }
         catch (Exception e) {
@@ -41,7 +40,8 @@ public partial class SearchController(
         SearchParameters searchParameters = new(query, "title");
 
         try {
-            var results = await client.Search<SearchLive>(SearchInitializer.LiveCollectionName, searchParameters);
+            SearchResult<SearchLive> results =
+                await client.Search<SearchLive>(SearchInitializer.LiveCollectionName, searchParameters);
             return Ok(results.Hits.Select(hit => hit.Document));
         }
         catch (Exception e) {

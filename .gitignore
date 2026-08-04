@@ -10,3 +10,6 @@ aspire.config.json
 
 # Generated test data
 testdata/
+.omp/
+.playwright/
+.mcp.json
