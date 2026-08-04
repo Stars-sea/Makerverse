@@ -1,4 +1,5 @@
 using Common;
+using JasperFx.CodeGeneration.Model;
 using SearchService.Data;
 using Typesense;
 using Typesense.Setup;
@@ -22,6 +23,11 @@ await builder.UseWolverineWithRabbitMqAsync(options => {
         cfg => cfg.BindExchange("activities")
     );
     options.ApplicationAssembly = typeof(Program).Assembly;
+
+    // AddTypesenseClient 以 opaque lambda factory 注册 ITypesenseClient，
+    // Wolverine 6 默认 ServiceLocationPolicy.NotAllowed 会导致 handler 代码生成失败、
+    // 消息被静默丢弃（不重试、不进死信）。Typesense 客户端无法改为直接注入，放行该场景。
+    options.ServiceLocationPolicy = ServiceLocationPolicy.AllowedButWarn;
 });
 
 builder.Services.AddTypesenseClient(config => {
