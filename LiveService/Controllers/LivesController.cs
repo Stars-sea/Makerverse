@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Common;
 using Contracts;
 using LiveService.Data;
@@ -141,8 +141,10 @@ public class LivesController(
         if (userId is null || live.StreamerId != userId) return Forbid();
 
         if (dto.Status == "start") {
-            // TODO: Due to instability in the current SRT protocol implementation, it is temporarily hardcoded to RTMP.
-            var ret = await livestreamService.StartLivestreamAsync(live.Id, InputProtocol.Rtmp);
+            InputProtocol protocol = string.Equals(dto.Protocol, "rtsp", StringComparison.OrdinalIgnoreCase)
+                ? InputProtocol.Rtsp
+                : InputProtocol.Rtmp;
+            var ret = await livestreamService.StartLivestreamAsync(live.Id, protocol);
             await queue.QueueWatcherAsync(live.Id);
 
             if (ret.IsError) return ret.FirstError.ToActionResult();
@@ -159,6 +161,7 @@ public class LivesController(
             var ret = await livestreamService.StopLivestreamAsync(live.Id);
             if (ret is {} err)
                 return err.ToActionResult();
+            return NoContent();
         }
 
         return BadRequest($"Invalid status value '{dto.Status}'.");

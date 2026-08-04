@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using ErrorOr;
 using LiveService.Options;
 using Microsoft.Extensions.Options;
@@ -18,9 +18,11 @@ public class LivestreamPersistentService(
 ) {
     private string BucketName => options.Value.BucketName;
 
-    private static string PlaylistObjectName(string id) => $"{id}/index.m3u8";
+    private string SegmentPrefix => options.Value.SegmentPrefix;
 
-    private static string SegmentObjectName(string id, int num) => $"{id}/segment_{num:0000}.ts";
+    private string PlaylistObjectName(string id) => $"{SegmentPrefix}/{id}/index.m3u8";
+
+    private string SegmentObjectName(string id, int num) => $"{SegmentPrefix}/{id}/segment_{num:0000}.ts";
 
     private async Task<ErrorOr<ObjectStat>> GetStatAsync(string name, CancellationToken ct = default) {
         try {
@@ -69,10 +71,10 @@ public class LivestreamPersistentService(
     public async IAsyncEnumerable<string> ListSegmentsAsync(string liveId, [EnumeratorCancellation] CancellationToken ct = default) {
         ListObjectsArgs args = new ListObjectsArgs()
             .WithBucket(BucketName)
-            .WithPrefix($"{liveId}/");
+            .WithPrefix($"{SegmentPrefix}/{liveId}/");
         IAsyncEnumerable<Item>? enumerable = minio.ListObjectsEnumAsync(args, ct);
 
-        int prefixLen = liveId.Length + 1;
+        int prefixLen = SegmentPrefix.Length + liveId.Length + 2;
         await foreach (Item item in enumerable) {
             if (!item.Key.EndsWith(".ts")) continue;
             yield return item.Key[prefixLen..];

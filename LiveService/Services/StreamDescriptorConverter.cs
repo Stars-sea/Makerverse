@@ -1,4 +1,3 @@
-﻿using System.Text;
 using LiveService.DTOs;
 using LiveService.Options;
 using LiveService.Protos;
@@ -16,7 +15,7 @@ public class StreamDescriptorConverter(
 
         UriBuilder pushUrlBuilder = descriptor.InputProtocol switch {
             InputProtocol.Rtmp => BuildRtmpUri(endpoint.Rtmp),
-            InputProtocol.Srt  => BuildSrtIngestUri(endpoint.Srt),
+            InputProtocol.Rtsp => BuildRtspIngestUri(endpoint.Rtsp),
             _                  => throw new ArgumentException($"Unsupported input protocol: {descriptor.InputProtocol}")
         };
 
@@ -37,18 +36,12 @@ public class StreamDescriptorConverter(
         );
     }
 
-    private UriBuilder BuildSrtIngestUri(SrtIngestEndpoint endpoint) {
-        StringBuilder query = new("mode=caller");
-        query.Append($"&srt_streamid={endpoint.LiveId}");
-        if (endpoint.HasPassphrase) {
-            query.Append($"&passphrase={endpoint.Passphrase}");
-            query.Append("&pbkeylen=32");
-        }
+    private UriBuilder BuildRtspIngestUri(RtspEndpoint endpoint) {
         return new UriBuilder {
             Host   = Host,
             Port   = (int)endpoint.Port,
-            Query  = query.ToString(),
-            Scheme = "srt"
+            Path   = endpoint.Path,
+            Scheme = "rtsp"
         };
     }
 

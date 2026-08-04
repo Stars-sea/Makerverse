@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using ErrorOr;
 using Grpc.Core;
 using LiveService.Data;
@@ -11,15 +11,6 @@ public class LivestreamService(
     LiveDbContext db,
     Livestream.LivestreamClient grpc
 ) {
-
-    private static string GeneratePassphrase(int length) {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-        Random random = new();
-        return new string(Enumerable.Repeat(chars, length)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-
-    }
 
     public async Task<ErrorOr<StartLivestreamResponse>> StartLivestreamAsync(
         string liveId,
@@ -42,7 +33,6 @@ public class LivestreamService(
             resp = await grpc.StartLivestreamAsync(
                 new StartLivestreamRequest {
                     LiveId        = liveId,
-                    Passphrase    = GeneratePassphrase(32),
                     InputProtocol = protocol
                 },
                 cancellationToken: ct

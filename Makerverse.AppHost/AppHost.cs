@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Makerverse.AppHost.ApplicationModel;
 using Microsoft.Extensions.Hosting;
 
@@ -38,6 +39,10 @@ var keycloak = builder.AddKeycloak("keycloak", port: 6001)
     .WithEnvironment("ACCOUNT_SERVICE_CLIENT_SECRET", accountServiceClientSecret)
     .WithRealmImport("./data/keycloak-realms")
     .WithPostgres(keycloakDb)
+    // AddKeycloak switches its primary endpoint to HTTPS whenever a developer
+    // certificate is available; services cannot validate that cert in dev, so
+    // opt out and keep the endpoint plain HTTP (reachable via service discovery).
+    .WithAnnotation(new HttpsCertificateAnnotation { UseDeveloperCertificate = false })
     .WaitFor(keycloakDb);
 
 if (!builder.Environment.IsDevelopment()) {
@@ -85,7 +90,7 @@ var accountService = builder.AddProject<Projects.AccountService>("account-svc")
     .WithEnvironment("AvatarOptions__BucketName", accountAvatarBucket)
     .WithEnvironment("KeycloakOptions__Realm", "makerverse")
     .WithEnvironment("KeycloakOptions__PublicClientId", "makerverse")
-    .WithEnvironment("KeycloakOptions__InternalBaseUrl", "http://keycloak")
+    .WithEnvironment("KeycloakOptions__InternalBaseUrl", keycloak.GetEndpoint("http"))
     .WithEnvironment("KeycloakAdminOptions__ClientId", "makerverse-account-service")
     .WithEnvironment("KeycloakAdminOptions__ClientSecret", accountServiceClientSecret)
     .WithEnvironment("VIRTUAL_HOST", hostId)
@@ -100,6 +105,7 @@ var liveService = builder.AddProject<Projects.LiveService>("live-svc")
     .WithRemoteImageTag("latest")
     .WithEnvironment("LivestreamOptions__Hostname", hostLive)
     .WithEnvironment("LivestreamOptions__BucketName", livestreamBucket)
+    .WithEnvironment("LivestreamOptions__SegmentPrefix", "hls")
     .WithReference(keycloak)
     .WithReference(liveDb)
     .WithReference(rabbitmq)

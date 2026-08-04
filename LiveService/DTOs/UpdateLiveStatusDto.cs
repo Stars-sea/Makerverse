@@ -1,7 +1,8 @@
-﻿using LiveService.Validators;
+using LiveService.Validators;
 
 namespace LiveService.DTOs;
 
 public record UpdateLiveStatusDto(
-    [UpdateStatusValidator] string Status
+    [UpdateStatusValidator] string Status,
+    string? Protocol = null
 );
