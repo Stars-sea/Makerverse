@@ -82,7 +82,11 @@ var livestreamService = builder.AddLivestreamService(
     .WithEnvironment("VIRTUAL_HOST", hostLive)
     .WithEnvironment("VIRTUAL_PORT", "8081")
     .WithReference(minio)
-    .WaitFor(minio);
+    .WaitFor(minio)
+    .WithTranscodeConfig(config => config
+        .WithBitrate(4096)
+        .WithPreset(TranscodePreset.Medium)
+    );
 
 var accountService = builder.AddProject<Projects.AccountService>("account-svc")
     .WithContainerRegistry(registry)

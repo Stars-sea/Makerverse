@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Makerverse.AppHost.ApplicationModel;
 
 public static class LivestreamBuilderExtensions {
@@ -82,5 +84,25 @@ public static class LivestreamBuilderExtensions {
             .WithEnvironment("MINIO__ACCESS_KEY", minio.Resource.RootUser)
             .WithEnvironment("MINIO__SECRET_KEY", minio.Resource.PasswordParameter)
             .WithEnvironment("MINIO__BUCKET", builder.Resource.BucketName);
+    }
+
+    public static IResourceBuilder<LivestreamResource> WithTranscodeConfig(
+        this IResourceBuilder<LivestreamResource> builder, 
+        LivestreamTranscodeConfig config
+    ) {
+        if (config.Fps.HasValue)
+            builder.WithEnvironment("TRANSCODE__FPS", config.Fps.Value.ToString(CultureInfo.InvariantCulture));
+        
+        return builder
+            .WithEnvironment("TRANSCODE__BITRATE_KBPS", config.Bitrate.ToString())
+            .WithEnvironment("TRANSCODE__PRESET", config.PresetString)
+            .WithEnvironment("TRANSCODE__GOP_SECS", config.GopSecs.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public static IResourceBuilder<LivestreamResource> WithTranscodeConfig(
+        this IResourceBuilder<LivestreamResource>                  builder,
+        Func<LivestreamTranscodeConfig, LivestreamTranscodeConfig> configure
+    ) {
+        return builder.WithTranscodeConfig(configure(new LivestreamTranscodeConfig()));
     }
 }
