@@ -67,6 +67,7 @@ Parameters:postgres-password=test-postgres-password
 - **postgres 例外**：保留 `postgres-data` 命名卷 + 固定密码。实测原因：移除卷后 Aspire 的建库脚本（`docker exec psql`）与 postgres 首次初始化存在竞态，psql 挂起导致 `StartAsync` 卡死至超时；保留卷 + 固定密码使数据目录预热且密码跨轮一致（同时消除旧卷密码不匹配问题）。
 - **typesense 例外**：镜像内无 `/data` 目录（数据目录依赖挂载创建），移除卷后补匿名卷挂载，否则 typesense 30.1 拒绝启动。
 - **livestream-svc 构建例外（仅 CI）**：DCP 只要存在 `DockerfileBuildAnnotation` 就在每次 `StartAsync` 无条件执行 `docker build`（DCP v0.24.3 `handleNewContainer`/`buildImageWithOrchestrator`），冷 runner 上 cargo-chef 多阶段 release 构建远超 5 分钟预算。CI 下移除该注解，改由工作流预构建 `livestream-svc:latest`（gha 层缓存），见 §8。
+- **keycloak 堆限制（仅 CI）**：镜像默认 `KC_RUN_IN_CONTAINER=true` → kc.sh 用 `-XX:InitialRAMPercentage=50/-XX:MaxRAMPercentage=70`，7GB runner 上启动即 commit ~3.5GB 堆，全栈合计逼近内存上限，实测 OOM 杀 keycloak（FailedToStart）。CI 下注入 `JAVA_OPTS_KC_HEAP=-Xms128m -Xmx1g`（kc.sh 支持环境变量覆盖，实测 JVM 采纳）。
 
 ### 资源访问
 

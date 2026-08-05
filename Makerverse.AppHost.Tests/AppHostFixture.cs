@@ -38,6 +38,7 @@ public sealed class AppHostFixture : IAsyncLifetime {
 
         RemoveContainerMounts(app);
         RemoveDockerfileBuildInCi(app);
+        LimitKeycloakHeapInCi(app);
 
         await app.StartAsync().WaitAsync(TestConstants.DefaultTimeout);
         App = app;
@@ -67,6 +68,26 @@ public sealed class AppHostFixture : IAsyncLifetime {
 
     public Task<(string AccessToken, string RefreshToken)> LoginAsync(string username, string password) {
         return TestHttp.LoginAsync(AccountService, username, password);
+    }
+
+    /// <summary>
+    ///     TESTING.md §8：CI 下限制 keycloak JVM 堆。镜像默认 KC_RUN_IN_CONTAINER=true →
+    ///     kc.sh 用 -XX:InitialRAMPercentage=50/-XX:MaxRAMPercentage=70（实测 26.6 镜像），
+    ///     GitHub runner 7GB 内存下 keycloak 启动即 commit ~3.5GB，全栈合计逼近上限，
+    ///     OOM killer 会杀掉 keycloak 容器（FailedToStart，实测 2026-08-05 CI 失败）。
+    ///     注入 JAVA_OPTS_KC_HEAP 覆盖为固定堆（kc.sh 优先级：环境变量 &gt; 镜像默认）。
+    /// </summary>
+    private static void LimitKeycloakHeapInCi(DistributedApplication app) {
+        if (!TestConstants.IsCi) return;
+
+        var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+        foreach (IResource resource in model.Resources) {
+            if (resource.Name != "keycloak") continue;
+
+            resource.Annotations.Add(new EnvironmentCallbackAnnotation(
+                "JAVA_OPTS_KC_HEAP",
+                () => "-Xms128m -Xmx1g"));
+        }
     }
 
     /// <summary>
