@@ -65,4 +65,22 @@ public static class LivestreamBuilderExtensions {
                 "RTSP__PORT",
                 isExternal: true);
     }
+    
+    /// <summary>
+    /// Wires MinIO into the livestream service: injects the connection string
+    /// (ConnectionStrings__minio) plus the MINIO__* env vars the Rust binary
+    /// reads (config-rs `__` nesting). More specific than the Aspire generic
+    /// <c>WithReference</c> overload, so <c>WithReference(minio)</c> on a
+    /// LivestreamResource resolves here.
+    /// </summary>
+    public static IResourceBuilder<LivestreamResource> WithReference(
+        this IResourceBuilder<LivestreamResource> builder,
+        IResourceBuilder<MinioContainerResource>  minio) {
+        builder.WithReference((IResourceBuilder<IResourceWithConnectionString>)minio);
+        return builder
+            .WithEnvironment("MINIO__URI", minio.Resource.PrimaryEndpoint)
+            .WithEnvironment("MINIO__ACCESS_KEY", minio.Resource.RootUser)
+            .WithEnvironment("MINIO__SECRET_KEY", minio.Resource.PasswordParameter)
+            .WithEnvironment("MINIO__BUCKET", builder.Resource.BucketName);
+    }
 }
