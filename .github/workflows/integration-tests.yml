@@ -51,6 +51,20 @@ jobs:
         run: cargo build -p livestream-test-utils
         working-directory: livestream-rs
 
+      # testdata/ 被 .gitignore（生成文件），CI checkout 后 sample.mp4 不存在；
+      # Stress 工具以 -c copy 推流，缺文件时 ffmpeg 立即失败且无 publish 会话。
+      # 生成参数与 livestream-rs scripts/e2e-test.sh 一致。
+      - name: Generate test video
+        run: |
+          mkdir -p testdata
+          if [ ! -f testdata/sample.mp4 ]; then
+            ffmpeg -y -f lavfi -i "testsrc=duration=30:size=1280x720:rate=30" \
+                   -f lavfi -i "sine=frequency=440:duration=30" \
+                   -c:v libx264 -preset veryfast -g 30 -pix_fmt yuv420p \
+                   -c:a aac -shortest testdata/sample.mp4 2>/dev/null
+          fi
+        working-directory: livestream-rs
+
       - name: Restore
         run: dotnet restore
 
