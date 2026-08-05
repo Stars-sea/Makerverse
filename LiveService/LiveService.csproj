@@ -9,15 +9,15 @@
     <ItemGroup>
         <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.4.6"/>
         <PackageReference Include="Aspire.StackExchange.Redis" Version="13.4.6"/>
-        <PackageReference Include="CommunityToolkit.Aspire.Minio.Client" Version="13.4.1-beta.686"/>
-        <PackageReference Include="Google.Protobuf" Version="3.35.1"/>
-        <PackageReference Include="Grpc.AspNetCore" Version="2.80.0"/>
-        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.80.0"/>
-        <PackageReference Include="Grpc.Tools" Version="2.82.0">
+        <PackageReference Include="CommunityToolkit.Aspire.Minio.Client" Version="13.4.1-beta.701" />
+        <PackageReference Include="Google.Protobuf" Version="3.36.0-rc2" />
+        <PackageReference Include="Grpc.AspNetCore" Version="2.83.0" />
+        <PackageReference Include="Grpc.Net.ClientFactory" Version="2.83.0" />
+        <PackageReference Include="Grpc.Tools" Version="2.83.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

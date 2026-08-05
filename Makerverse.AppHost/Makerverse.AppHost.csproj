@@ -15,8 +15,8 @@
         <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.4.6"/>
         <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6"/>
         <PackageReference Include="Aspire.Hosting.Yarp" Version="13.4.6"/>
-        <PackageReference Include="CommunityToolkit.Aspire.Hosting.Keycloak.Extensions" Version="13.4.1-beta.686"/>
-        <PackageReference Include="CommunityToolkit.Aspire.Hosting.Minio" Version="13.4.1-beta.686"/>
+        <PackageReference Include="CommunityToolkit.Aspire.Hosting.Keycloak.Extensions" Version="13.4.1-beta.701" />
+        <PackageReference Include="CommunityToolkit.Aspire.Hosting.Minio" Version="13.4.1-beta.701" />
     </ItemGroup>
 
     <ItemGroup>
