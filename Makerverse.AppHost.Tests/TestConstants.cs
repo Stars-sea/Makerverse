@@ -40,11 +40,12 @@ public static class TestConstants {
         "Parameters:postgres-password=test-postgres-password"
     ];
 
-    // 超时（TESTING.md §8）：CI → 5 分钟；本地默认 30 秒；
+    // 超时（TESTING.md §8）：CI → 10 分钟（StartAsync 含镜像拉取与容器启动，预留冷 runner 余量；
+    // livestream-svc 镜像构建已由工作流预构建，见 RemoveDockerfileBuildInCi）；本地默认 30 秒；
     // 全栈健康等待本地放宽到 10 分钟（§8 首次运行预算 5–10 分钟，§11 Keycloak 冷启动 30–60s + livestream 镜像构建）。
     public static bool IsCi => Environment.GetEnvironmentVariable("CI") is not null;
 
-    public static TimeSpan DefaultTimeout => IsCi ? TimeSpan.FromMinutes(5) : TimeSpan.FromSeconds(30);
+    public static TimeSpan DefaultTimeout => IsCi ? TimeSpan.FromMinutes(10) : TimeSpan.FromSeconds(30);
 
     public static TimeSpan StackHealthyTimeout => IsCi ? TimeSpan.FromMinutes(5) : TimeSpan.FromMinutes(10);
 

@@ -45,10 +45,37 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      # livestream-svc 镜像优先从子仓库 CI 推送的 GHCR 包拉取（按 submodule commit SHA 精确匹配，
+      # 见 livestream-rs/.github/workflows/ci.yml）；镜像不存在（子仓库 CI 失败/历史 commit）时
+      # 回退到本地预构建（下一步）。测试侧 AppHostFixture.RemoveDockerfileBuildInCi 在 CI 下
+      # 移除 Dockerfile 构建注解，DCP 直接复用 livestream-svc:latest。
+      - name: Pull pre-built livestream-svc image
+        id: pull-livestream
+        run: |
+          sha="$(git -C livestream-rs rev-parse HEAD)"
+          echo "submodule sha: ${sha}"
+          if docker pull "ghcr.io/stars-sea/livestream-svc:${sha}"; then
+            docker tag "ghcr.io/stars-sea/livestream-svc:${sha}" livestream-svc:latest
+            echo "image=pulled" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=missing" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Fallback：GHCR 包缺失时的冷构建（cargo-chef 多阶段 release，远超 StartAsync 预算），
+      # gha 层缓存跨 run 复用；USE_MIRROR=false 与 Dockerfile 的 CI 约定一致。
+      - name: Pre-build livestream-svc image (cached)
+        if: steps.pull-livestream.outputs.image == 'missing'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./livestream-rs
+          file: ./livestream-rs/Dockerfile
+          build-args: USE_MIRROR=false
+          tags: livestream-svc:latest
+          load: true
+          cache-from: type=gha,scope=livestream-svc
+          cache-to: type=gha,mode=max,scope=livestream-svc
+
       - name: Run integration tests
         run: dotnet test --no-build --verbosity normal
 
-      # 优化方向（首次落地暂缓）：
-      # - livestream-svc 镜像（cargo-chef 多阶段 release 构建）冷启动慢，
-      #   可用 docker/build-push-action cache 或 actions/cache 预置构建产物。
-      # - 若 CI 上 Stress 偶发失败，可先 `--filter "Category!=Stress"` 排除再排查。
+      # 若 CI 上 Stress 偶发失败，可先 `--filter "Category!=Stress"` 排除再排查。

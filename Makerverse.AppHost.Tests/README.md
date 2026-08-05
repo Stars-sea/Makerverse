@@ -66,6 +66,7 @@ Parameters:postgres-password=test-postgres-password
 - 构建后、启动前移除所有资源的 `ContainerMountAnnotation`（命名卷与 bind mount），保证每轮测试干净。
 - **postgres 例外**：保留 `postgres-data` 命名卷 + 固定密码。实测原因：移除卷后 Aspire 的建库脚本（`docker exec psql`）与 postgres 首次初始化存在竞态，psql 挂起导致 `StartAsync` 卡死至超时；保留卷 + 固定密码使数据目录预热且密码跨轮一致（同时消除旧卷密码不匹配问题）。
 - **typesense 例外**：镜像内无 `/data` 目录（数据目录依赖挂载创建），移除卷后补匿名卷挂载，否则 typesense 30.1 拒绝启动。
+- **livestream-svc 构建例外（仅 CI）**：DCP 只要存在 `DockerfileBuildAnnotation` 就在每次 `StartAsync` 无条件执行 `docker build`（DCP v0.24.3 `handleNewContainer`/`buildImageWithOrchestrator`），冷 runner 上 cargo-chef 多阶段 release 构建远超 5 分钟预算。CI 下移除该注解，改由工作流预构建 `livestream-svc:latest`（gha 层缓存），见 §8。
 
 ### 资源访问
 
@@ -183,6 +184,6 @@ Parameters:postgres-password=test-postgres-password
 
 ## 8. 未实现部分
 
-- **CI 已落地**：`.github/workflows/integration-tests.yml`（push/PR 到 main，跑全套含 Stress；要点：子模块 URL HTTPS 重写、ffmpeg + Rust toolchain、60 分钟超时）。仍可优化：livestream-svc 镜像冷构建慢，可用 docker/build-push-action cache 或 actions/cache 预置。
+- **CI 已落地**：`.github/workflows/integration-tests.yml`（push/PR 到 main，跑全套含 Stress；要点：子模块 URL HTTPS 重写、ffmpeg + Rust toolchain、60 分钟超时）。livestream-svc 镜像优先从子仓库 CI 推送的 GHCR 包拉取（`ghcr.io/stars-sea/livestream-svc:<commit-sha>`，见 livestream-rs/.github/workflows/ci.yml；包需公开）；拉取失败（子仓库 CI 失败/历史 commit）时回退 docker/build-push-action + gha 层缓存预构建（`USE_MIRROR=false`）。测试侧 `AppHostFixture.RemoveDockerfileBuildInCi` 在 CI 下移除 Dockerfile 构建注解直接复用预构建镜像（见下）。
 
 - **Tier 2 服务级集成**（可选）：ActivityService 用 Testcontainers（PostgreSQL + Redis + RabbitMQ）起单服务验证 controller 与消息发布；LiveService 需 mock gRPC（livestream-svc），实现成本高，优先级最低。

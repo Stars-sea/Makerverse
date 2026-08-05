@@ -37,6 +37,7 @@ public sealed class AppHostFixture : IAsyncLifetime {
         DistributedApplication app = await builder.BuildAsync().WaitAsync(TestConstants.DefaultTimeout);
 
         RemoveContainerMounts(app);
+        RemoveDockerfileBuildInCi(app);
 
         await app.StartAsync().WaitAsync(TestConstants.DefaultTimeout);
         App = app;
@@ -66,6 +67,27 @@ public sealed class AppHostFixture : IAsyncLifetime {
 
     public Task<(string AccessToken, string RefreshToken)> LoginAsync(string username, string password) {
         return TestHttp.LoginAsync(AccountService, username, password);
+    }
+
+    /// <summary>
+    ///     TESTING.md §8：CI 下移除 livestream-svc 的 Dockerfile 构建注解——DCP 只要存在
+    ///     DockerfileBuildAnnotation 就会在每次 StartAsync 无条件执行 docker build（DCP v0.24.3
+    ///     handleNewContainer/buildImageWithOrchestrator），冷 runner 上 cargo-chef 多阶段 release
+    ///     构建远超预算。镜像由 CI 工作流提供并 tag 为 livestream-svc:latest（优先拉子仓库 GHCR
+    ///     包，miss 时本地预构建），测试直接复用。
+    /// </summary>
+    private static void RemoveDockerfileBuildInCi(DistributedApplication app) {
+        if (!TestConstants.IsCi) return;
+
+        var model = app.Services.GetRequiredService<DistributedApplicationModel>();
+        foreach (IResource resource in model.Resources) {
+            if (resource.Name != "livestream-svc") continue;
+
+            foreach (DockerfileBuildAnnotation annotation in
+                     resource.Annotations.OfType<DockerfileBuildAnnotation>().ToList()) {
+                resource.Annotations.Remove(annotation);
+            }
+        }
     }
 
     /// <summary>
