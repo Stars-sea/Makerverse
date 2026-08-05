@@ -32,12 +32,24 @@ jobs:
         with:
           dotnet-version: '10.x'
 
-      # Stress 测试（LivestreamStressTests）需要 cargo（构建 livestream-test-utils）与 ffmpeg。
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      # Stress 测试（LivestreamStressTests）需要 cargo（构建 livestream-test-utils）与 ffmpeg；
+      # livestream-test-utils 的 build.rs 用 tonic-prost-build，还需要 protoc（protobuf-compiler）。
+      - name: Install ffmpeg and protoc
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg protobuf-compiler
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        # 与 livestream-rs ci.yml 相同的缓存策略；Stress 测试的 livestream-test-utils
+        # 依赖树（tonic/prost）冷构建可达 10 分钟以上，必须跨 run 缓存。
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+
+      # 预热 Stress 工具构建：cargo run（LivestreamStressTest）在测试预算（15 分钟）内
+      # 首次冷构建依赖树有超时风险，这里提前构建并暴露 protoc 缺失等问题。
+      - name: Pre-build stress test tool
+        run: cargo build -p livestream-test-utils
+        working-directory: livestream-rs
 
       - name: Restore
         run: dotnet restore
