@@ -1,67 +1,126 @@
 # Makerverse
 
-直播平台后端：基于 **.NET Aspire** 的微服务集群（认证 / 活动 / 直播 / 搜索）+ **Rust** 直播媒体服务（livestream-rs，RTMP/RTSP 接入、HTTP-FLV 分发、HLS 持久化）。
+A live-streaming backend platform: a .NET Aspire microservice cluster (auth / activities / live / search) plus a Rust media server (`livestream-rs`) for RTMP/RTSP ingest, HTTP-FLV delivery, and HLS persistence.
 
-## 架构
+## Features
 
-Aspire AppHost（`Makerverse.AppHost`）编排全部服务与基础设施容器，管理连接串与启动顺序（`.WaitFor()`）。
+- **Streaming ingest** — RTMP and RTSP (with server-side MJPEG → H.264 transcoding) via `livestream-rs`
+- **Delivery** — HTTP-FLV playback, HLS segment upload to MinIO
+- **Auth** — Keycloak-backed OIDC password flow, token refresh, and user management (AccountService)
+- **Live sessions** — session lifecycle CRUD, watcher-driven state, HLS segment serving (LiveService)
+- **Search** — Typesense full-text search over activities and lives (SearchService)
+- **Event-driven** — Wolverine + RabbitMQ messaging across services
 
-| 服务 | 职责 | 消息 |
+## Architecture
+
+The Aspire AppHost (`Makerverse.AppHost`) orchestrates all services and infrastructure containers, wiring connection strings and startup order (`.WaitFor()`).
+
+| Service | Responsibility | Messaging |
 |---|---|---|
-| **AccountService** | 认证（Keycloak OIDC 密码授权、token 刷新、登出）、用户 CRUD（Keycloak Admin API）、头像上传/读取（MinIO） | 无 |
-| **ActivityService** | 博客式活动：标签、评论、投票；标签缓存于 Redis | 发布 `ActivityCreated/Updated/Deleted` 到 `activities` 交换机 |
-| **LiveService** | 直播会话 CRUD、HLS 段服务（MinIO 读取）、`LivestreamLifecycleWatcher`（gRPC 流式监听会话状态） | 发布 `LiveCreated/Updated/Deleted/Connected/Terminate` 到 `lives` 交换机 |
-| **SearchService** | Typesense 全文检索；消费活动/直播事件并索引 | 消费 `activities.search` / `lives.search` 队列 |
-| **livestream-rs**（Rust 子模块） | SRT/RTMP 接入、RTSP（含 MJPEG→H.264 服务端转码）、HTTP-FLV 播放、TS 段上传 MinIO、gRPC 控制面 | — |
+| **AccountService** | Auth (Keycloak OIDC password grant, token refresh, logout), user CRUD (Keycloak Admin API), avatar upload/read (MinIO) | — |
+| **ActivityService** | Blog-style activities: tags, comments, votes; tag cache in Redis | Publishes `ActivityCreated/Updated/Deleted` to the `activities` exchange |
+| **LiveService** | Live session CRUD, HLS segment serving (MinIO), `LivestreamLifecycleWatcher` (gRPC stream of session state) | Publishes `LiveCreated/Updated/Deleted/Connected/Terminate` to the `lives` exchange |
+| **SearchService** | Typesense full-text search; consumes activity/live events and indexes them | Consumes `activities.search` / `lives.search` queues |
+| **livestream-rs** (Rust submodule) | SRT/RTMP ingest, RTSP (incl. MJPEG → H.264 server-side transcode), HTTP-FLV playback, TS segment upload to MinIO, gRPC control plane | — |
 
-基础设施（AppHost 托管）：PostgreSQL（keycloak/activity/live 三库）、Keycloak、RabbitMQ、Redis、MinIO、Typesense、YARP 网关、nginx-proxy（仅 production）。
+Managed infrastructure (AppHost-hosted): PostgreSQL (keycloak/activity/live databases), Keycloak, RabbitMQ, Redis, MinIO, Typesense, a YARP gateway, and nginx-proxy (production only).
 
-跨服务通信：**Wolverine + RabbitMQ**（契约见 `Contracts`，事件驱动；SearchService 为消费者）。服务间不共享数据库。
+Cross-service communication: **Wolverine + RabbitMQ** (contracts in `Contracts`; SearchService is the consumer). Services do not share databases.
 
-## 快速开始
+## Getting Started
 
-前置：.NET SDK 10、Aspire CLI 13.4.6、Docker（podman 亦可）、Rust 工具链 + FFmpeg 开发库（仅 livestream-rs）。
+### Prerequisites
+
+- .NET SDK 10
+- Aspire CLI 13.4.6
+- Docker (podman also works)
+- Rust toolchain + FFmpeg dev libraries (livestream-rs only)
+
+### Quick start
 
 ```bash
-# 本地起全栈（Aspire 编排所有服务 + 基础设施）
+# Run the full stack locally (Aspire orchestrates all services + infrastructure)
 aspire run
 
-# AppHost 必需的用户密钥
+# AppHost secrets
 dotnet user-secrets --project Makerverse.AppHost set "account-service-client-secret" "<value>"
 dotnet user-secrets --project Makerverse.AppHost set "typesense-api-key" "<value>"
 
-# Rust 子模块
+# Rust submodule
 cd livestream-rs && cargo build
 ```
 
-## 测试
+## Configuration
 
-- **Tier 1 单元**：`Makerverse.AppHost.Tests/UnitTests`（校验器、错误映射）。
-- **Tier 3 Aspire E2E**：`Makerverse.AppHost.Tests`（共享 AppHost fixture 的全栈集成测试：认证/活动/直播/搜索流）。
-- **压力测试**：`LivestreamStressTests`（`Category=Stress`）经 gRPC 控制面创建并发直播，ffmpeg 推流（RTMP）并验证拉流收帧；真实宿主媒体端口经 `--rtmp-port/--rtsp-port/--http-flv-port` 传入（测试模式端口随机化）。
-- **livestream-rs**：单元 + 集成测试（`crates/*/tests/`）与 `scripts/e2e-test.sh`（RTMP/RTSP → HTTP-FLV）。
-- **CI**：`.github/workflows/integration-tests.yml` 跑全套（含 Stress；需 cargo/ffmpeg）；子模块另有自己的 CI。
+### Transcode settings (RTSP MJPEG → H.264)
+
+`livestream-rs` transcodes RTSP MJPEG sources server-side. Parameters are read from environment variables (`livestream-core` `TranscodeConfig`, `__` as the nesting separator; see `crates/livestream-core/src/config.rs`):
+
+| Environment variable       | Default | Description                    |
+| -------------------------- | ------- | ------------------------------ |
+| `TRANSCODE__BITRATE_KBPS`  | 4096    | Target bitrate (kbps)          |
+| `TRANSCODE__PRESET`        | medium  | x264 preset                    |
+| `TRANSCODE__GOP_SECS`      | 2.0     | Keyframe interval (seconds)    |
+| `TRANSCODE__FPS`           | (unset) | Output frame rate; unset = follow source |
+
+Two ways to inject:
+
+1. Container environment variables — via compose `environment:` or AppHost `WithEnvironment("TRANSCODE__BITRATE_KBPS", "4096")`.
+2. Typed AppHost configuration (recommended, `Makerverse.AppHost/AppHost.cs`):
+
+   ```csharp
+   .WithTranscodeConfig(config => config
+       .WithBitrate(4096)
+       .WithPreset(TranscodePreset.Medium))
+   ```
+
+> **Gotcha: the encoder must set an explicit frame rate.** x264 derives its rate-control frame rate from `framerate`, falling back to `time_base`. Setting only `time_base = 1/1000` (millisecond PTS) makes x264 assume a 1000 fps source, diluting the per-frame bit budget 1000× — output QP stays pinned near 51 and the FLV stream runs at tens of kb/s regardless of `TRANSCODE__BITRATE_KBPS`. Fixed in `livestream-rs` `transcode.rs` `create_encoder` (explicit `framerate`, plus calibration against the measured source frame rate when `cfg.fps` is unset).
+
+## Deployment
 
 ```bash
-dotnet test                              # 仓库根；首次运行拉镜像 + 构建 livestream-svc，预算 5–10 分钟
-dotnet test --filter "Category=Stress"   # 仅压力测试
-dotnet test --filter SmokeTests          # 仅冒烟
+# Build/push images and generate compose artifacts
+aspire deploy
+
+# Apply the stack manually — the deploy's compose-up step hangs with
+# podman-compose on this host, so compose is applied by hand
+cd Makerverse.AppHost/aspire-output && \
+  docker compose -p "<project-name>" --env-file .env.Production -f docker-compose.yaml up -d
+
+# Verify routing (HTTP 400 = routing OK; 503 = stack not up)
+curl -X POST -H 'Content-Type: application/json' -d '{}' http://id.makerverse.local/account/auth/token
 ```
 
-## 仓库结构
+`<project-name>` = `DockerCompose:production:ProjectName` in `~/.aspire/deployments/*/production.json` (e.g. `aspire-production-<hash>`). **Keep it stable across deploys** — a different name starts a second stack (port conflicts) with a fresh Keycloak, so re-register users via `POST /account/users/register` if they're missing after a project change.
+
+## Testing
+
+- **Tier 1 unit tests**: `Makerverse.AppHost.Tests/UnitTests` (validators, error mapping).
+- **Tier 3 Aspire E2E**: `Makerverse.AppHost.Tests` (full-stack integration against a shared AppHost fixture: auth / activity / live / search flows).
+- **Stress tests**: `LivestreamStressTests` (`Category=Stress`) create concurrent lives via the gRPC control plane, push with ffmpeg (RTMP), and verify frame receipt; real host media ports are passed via `--rtmp-port` / `--rtsp-port` / `--http-flv-port` (test-mode ports are randomized).
+- **livestream-rs**: unit + integration tests (`crates/*/tests/`) plus `scripts/e2e-test.sh` (RTMP/RTSP → HTTP-FLV).
+- **CI**: `.github/workflows/integration-tests.yml` runs the full suite (including Stress; requires cargo/ffmpeg); the submodule has its own CI.
+
+```bash
+dotnet test                              # From the repo root; first run pulls images + builds livestream-svc, budget 5–10 min
+dotnet test --filter "Category=Stress"   # Stress tests only
+dotnet test --filter SmokeTests          # Smoke tests only
+```
+
+## Repository Layout
 
 ```
-Makerverse.AppHost/           # Aspire 编排（服务、基础设施、参数、生产 compose）
-Makerverse.AppHost.Tests/     # 单元 + E2E + 压力测试（README 见其目录）
-AccountService/ ActivityService/ LiveService/ SearchService/   # 业务服务
-Common/                       # 跨服务扩展（认证、CORS、错误映射、Wolverine/RabbitMQ）
-Contracts/                    # 消息契约 DTO（零依赖）
-Makerverse.ServiceDefaults/   # OTel、服务发现、健康检查、HTTP 韧性
-livestream-rs/                # Rust 直播媒体服务（子模块，独立仓库）
+Makerverse.AppHost/           # Aspire orchestration (services, infrastructure, parameters, production compose)
+Makerverse.AppHost.Tests/     # Unit + E2E + stress tests (see its README)
+AccountService/ ActivityService/ LiveService/ SearchService/   # Business services
+Common/                       # Cross-service extensions (auth, CORS, error mapping, Wolverine/RabbitMQ)
+Contracts/                    # Message contract DTOs (zero dependencies)
+Makerverse.ServiceDefaults/   # OTel, service discovery, health checks, HTTP resilience
+livestream-rs/                # Rust media server (submodule, separate repository)
 .github/workflows/            # CI
 ```
 
-## 相关文档
+## Documentation
 
-- [测试套件说明](Makerverse.AppHost.Tests/README.md)（用例清单、fixture 设计、实测注意事项）
-- [livestream-rs](livestream-rs/README.md) 及 `livestream-rs/docs/`（管道/数据流架构）
+- [Test suite guide](Makerverse.AppHost.Tests/README.md) (case list, fixture design, practical notes)
+- [livestream-rs](livestream-rs/README.md) and `livestream-rs/docs/` (pipeline/data-flow architecture)
