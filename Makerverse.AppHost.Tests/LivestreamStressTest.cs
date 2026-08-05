@@ -32,6 +32,10 @@ public sealed record StreamResult {
     [JsonPropertyName("pull_frames_detected")]
     public bool PullFramesDetected { get; init; }
 
+    [JsonPropertyName("hls_verified")] public bool HlsVerified { get; init; }
+
+    [JsonPropertyName("hls_segments")] public int HlsSegments { get; init; }
+
     [JsonPropertyName("errors")] public List<string> Errors { get; init; } = [];
 }
 
@@ -63,6 +67,7 @@ public static class LivestreamStressTest {
     /// <param name="durationSecs">Duration of each stream push in seconds.</param>
     /// <param name="parallel">Maximum parallel streams (default: same as <paramref name="streams" />).</param>
     /// <param name="protocol">Protocol to use: "rtmp" or "rtsp".</param>
+    /// <param name="minioConnectionString">MinIO connection string; when set, HLS persistence is verified per stream.</param>
     /// <param name="rtmpPort">Host-reachable RTMP port; overrides the value reported by GetServiceInfo.</param>
     /// <param name="rtspPort">Host-reachable RTSP port; overrides the value reported by GetServiceInfo.</param>
     /// <param name="httpFlvPort">Host-reachable HTTP-FLV port; overrides the value reported by GetServiceInfo.</param>
@@ -75,6 +80,7 @@ public static class LivestreamStressTest {
         int    durationSecs = 30,
         int?   parallel     = null,
         string protocol     = "rtmp",
+        string? minioConnectionString = null,
         int?   rtmpPort     = null,
         int?   rtspPort     = null,
         int?   httpFlvPort  = null,
@@ -112,6 +118,10 @@ public static class LivestreamStressTest {
         if (httpFlvPort.HasValue) {
             psi.ArgumentList.Add("--http-flv-port");
             psi.ArgumentList.Add(httpFlvPort.Value.ToString());
+        }
+        if (minioConnectionString is not null) {
+            psi.ArgumentList.Add("--minio-connection-string");
+            psi.ArgumentList.Add(minioConnectionString);
         }
 
         using Process process = Process.Start(psi)

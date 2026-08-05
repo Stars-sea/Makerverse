@@ -17,15 +17,18 @@ public sealed class LivestreamStressTests(AppHostFixture fixture) {
         string grpcEndpoint = await fixture.App.GetConnectionStringAsync("livestream-svc")
                               ?? fixture.App.GetEndpoint("livestream-svc", "grpc").ToString()
                               ?? throw new InvalidOperationException("livestream-svc connection string missing");
+        string minioConnectionString = await fixture.App.GetConnectionStringAsync("minio")
+                                       ?? throw new InvalidOperationException("minio connection string missing");
 
         using CancellationTokenSource cts = new(StressTimeout);
         StressReport report = await LivestreamStressTest.RunAsync(
             grpcEndpoint: grpcEndpoint,
             testVideoPath: "testdata/sample.mp4", // 相对 cwd（livestream-rs 仓库根）
             streams: 2,
-            durationSecs: 10,
+            durationSecs: 15, // 10s 分段时长 + 0.5s 关键帧 → 首个 TS 约 10.5s 出现，15s 留足余量
             parallel: 2,
             protocol: "rtmp",
+            minioConnectionString: minioConnectionString,
             // 测试模式下容器宿主端口随机分配，GetServiceInfo 只报告容器内端口；
             // 把实际宿主端口传给工具（--rtmp-port/--rtsp-port/--http-flv-port 覆盖）。
             rtmpPort: fixture.App.GetEndpoint("livestream-svc", "rtmp").Port,
@@ -35,5 +38,6 @@ public sealed class LivestreamStressTests(AppHostFixture fixture) {
 
         Assert.Equal(2, report.Successful);
         Assert.All(report.PerStream, r => Assert.True(r.PullFramesDetected));
+        Assert.All(report.PerStream, r => Assert.True(r.HlsVerified));
     }
 }

@@ -81,6 +81,10 @@ var livestreamService = builder.AddLivestreamService(
     .WithEnvironment("VIRTUAL_HOST", hostLive)
     .WithEnvironment("VIRTUAL_PORT", "8081")
     .WithReference(minio)
+    .WithEnvironment("MINIO__URI", minio.Resource.PrimaryEndpoint)
+    .WithEnvironment("MINIO__ACCESS_KEY", minio.Resource.RootUser)
+    .WithEnvironment("MINIO__SECRET_KEY", minio.Resource.PasswordParameter)
+    .WithEnvironment("MINIO__BUCKET", livestreamBucket)
     .WaitFor(minio);
 
 var accountService = builder.AddProject<Projects.AccountService>("account-svc")
