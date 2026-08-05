@@ -1,0 +1,54 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Aspire E2E + Stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # livestream-rs 子模块 URL 是 SSH 形式（.gitmodules），runner 上改为 HTTPS，
+      # 以便 actions/checkout 用 GITHUB_TOKEN 拉取（公开仓库无需凭据）。
+      - name: Rewrite submodule URL to HTTPS
+        run: git config --global url."https://github.com/Stars-sea/livestream-rs.git".insteadOf "git@github.com:Stars-sea/livestream-rs.git"
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # livestream-rs：livestream-svc 镜像构建 + stress 工具
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      # Stress 测试（LivestreamStressTests）需要 cargo（构建 livestream-test-utils）与 ffmpeg。
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run integration tests
+        run: dotnet test --no-build --verbosity normal
+
+      # 优化方向（首次落地暂缓）：
+      # - livestream-svc 镜像（cargo-chef 多阶段 release 构建）冷启动慢，
+      #   可用 docker/build-push-action cache 或 actions/cache 预置构建产物。
+      # - 若 CI 上 Stress 偶发失败，可先 `--filter "Category!=Stress"` 排除再排查。

@@ -4,11 +4,12 @@
 
 ## 1. 运行
 
-前置：Docker 可用（podman 亦可，需 `docker.sock` 兼容）、.NET SDK 10、Aspire CLI 13.4.6。
+前置：Docker 可用（podman 亦可，需 `docker.sock` 兼容）、.NET SDK 10、Aspire CLI 13.4.6；压力测试（LivestreamStressTests）另需 PATH 中的 `cargo` 与 `ffmpeg`。
 
 ```bash
 dotnet test                     # 仓库根；首次运行拉取镜像并本地构建 livestream-svc，预算 5–10 分钟
 dotnet test --filter SmokeTests # 单组
+dotnet test --filter "Category=Stress"  # 仅压力测试（cargo 增量构建后约 1 分钟）
 ```
 
 - 超时（依据 aspire.dev testing-in-cicd-pipelines）：`CI` 环境变量存在 → 5 分钟；本地 → 30 秒。全栈健康等待本地放宽到 10 分钟（首次运行预算）。
@@ -35,8 +36,10 @@ Makerverse.AppHost.Tests/
   SmokeTests.cs                 # S1-S3 健康/可达性
   AuthFlowTests.cs              # A1-A6 注册/登录/me/资料/头像/刷新
   ActivityFlowTests.cs          # C1-C7 活动/评论/标签/Redis 缓存
-  LiveFlowTests.cs              # L1-L5 直播 CRUD + HLS 段
-  SearchFlowTests.cs            # M1-M6 消息→Typesense 索引、搜索接口
+  LiveFlowTests.cs            # L1-L5 直播 CRUD + HLS 段
+  SearchFlowTests.cs          # M1-M6 消息→Typesense 索引、搜索接口
+  LivestreamStressTests.cs    # ST1 RTMP 并发推拉压力测试（Category=Stress）
+  LivestreamStressTest.cs     # 工具封装：cargo run livestream-test-utils + JSON 报告解析
   UnitTests/
     ValidatorTests.cs           # U1/U2
     ErrorMappingTests.cs        # U3
@@ -152,6 +155,14 @@ Parameters:postgres-password=test-postgres-password
 
 > 实测：SearchController 参数名为 `query`（非 `q`）；标签过滤是 query 内 `[tag]` 语法（非独立参数）。
 
+### LivestreamStressTests（Category=Stress；需要 cargo + ffmpeg + docker）
+
+| 用例 | 断言 |
+|---|---|
+| ST1 RTMP 并发推拉全成功 | 经 gRPC 控制面创建 2 个直播会话，ffmpeg 推流（RTMP），`report.Successful == 2` 且每流 `PullFramesDetected == true` |
+
+> 端口传递：测试模式下容器宿主端口全部随机，`GetServiceInfo` 只报告容器内端口（1935/8554/8081）；测试把 `app.GetEndpoint("livestream-svc", …)` 的真实宿主端口经 `--rtmp-port/--rtsp-port/--http-flv-port` 传给工具覆盖。
+
 ### UnitTests（Tier 1）
 
 | 用例 | 断言 |
@@ -167,33 +178,11 @@ Parameters:postgres-password=test-postgres-password
 - Keycloak 冷启动 30–60s；无真实推流时直播状态经 precreate TTL（默认 30s）由 watcher 置为 Stopped（L5 依赖此行为）。
 - RabbitMQ 异步无强一致 → 消息断言一律轮询 + 超时；viewCount 递增非幂等 → 断言单调关系；Typesense 更新非幂等 → 用例数据唯一化。
 - 测试进程异常退出时 DCP 可能残留容器，可手动清理：`podman rm -f $(podman ps -q)`。
+- **残留 AppHost 会劫持压力测试推流**：`aspire run` 的 livestream-svc 固定占用宿主端口 50050/1935/8554/8081（测试模式不受影响，全部随机）。若本机有残留 AppHost 进程（`ps` 可见 `Makerverse.AppHost` + `dcp`），其 DCP 代理仍监听这些端口，压力工具按 `GetServiceInfo` 连 `localhost:1935` 会打到旧实例 → 会话状态停在 0 全部失败。跑压力测试前先清理：`kill <AppHost-pid> <dcp-pid>`。
 - 本机环境变量 `CI=1` 时按 CI 超时（5 分钟）运行。
 
 ## 8. 未实现部分
 
-- **CI 方案**（设计给出，未落地）：`.github/workflows/integration-tests.yml`：
-
-```yaml
-name: Integration Tests
-on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with: { dotnet-version: '10.x' }
-      - name: Restore
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
-      - name: Run integration tests
-        run: dotnet test --no-build --verbosity normal
-```
-
-  要点：Linux runner（容器运行时必需）；随机端口默认开；`CI=true` 自动延长超时；livestream-svc 镜像构建慢，可用 `docker/build-push-action` cache 或 `actions/cache` 优化。
+- **CI 已落地**：`.github/workflows/integration-tests.yml`（push/PR 到 main，跑全套含 Stress；要点：子模块 URL HTTPS 重写、ffmpeg + Rust toolchain、60 分钟超时）。仍可优化：livestream-svc 镜像冷构建慢，可用 docker/build-push-action cache 或 actions/cache 预置。
 
 - **Tier 2 服务级集成**（可选）：ActivityService 用 Testcontainers（PostgreSQL + Redis + RabbitMQ）起单服务验证 controller 与消息发布；LiveService 需 mock gRPC（livestream-svc），实现成本高，优先级最低。
